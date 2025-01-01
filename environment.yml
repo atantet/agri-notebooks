@@ -1,0 +1,14 @@
+name: agri_notebooks
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - bokeh>=3
+  - holoviews
+  - hvplot
+  - numpy
+  - pandas
+  - panel>=1
+  - python>=3.9
