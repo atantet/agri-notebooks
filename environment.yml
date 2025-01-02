@@ -12,3 +12,4 @@ dependencies:
   - pandas
   - panel>=1
   - python>=3.9
+  - scikit-learn>=1.2
