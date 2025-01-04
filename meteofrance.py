@@ -141,8 +141,9 @@ def compiler_donnee_des_departements(client, df_liste_stations):
         response = demande_donnee_departement(client, id_departement)
 
         # DataFrame pour le département indexé par identifiant station et par date
-        df_departement = response_text_to_frame(response).set_index(
-            ['geo_id_insee', 'validity_time'])
+        time_col = 'validity_time'
+        df_departement = response_text_to_frame(
+            response, parse_dates=[time_col]).set_index(['geo_id_insee', time_col])
         
         # Compilation
         df_toutes = pd.concat([df_toutes, df_departement])

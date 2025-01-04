@@ -48,7 +48,7 @@ def selection_plus_proches_voisins(
 
     # Sélection des plus proches voisins
     df_liste_stations_nn = df_liste_stations.iloc[ind]
-    df_liste_stations_nn['distance'] = dist_km
+    df_liste_stations_nn.loc[:, 'distance'] = dist_km
     
     return df_liste_stations_nn
 
