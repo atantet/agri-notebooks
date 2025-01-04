@@ -55,9 +55,8 @@ def calcul_rayonnement_net_ondes_longues(df, ee, site):
     # Durant la nuit la clareté est suppossée égale à celle 2h avant le couché
     # Si des heures de journée avant la nuit ne sont pas disponibles on utilise
     # les heures après le levé
-    tol = 1.e-8
-    idx_couche = np.nonzero((r_s.values[1:] < tol) & (r_s.values[:-1] > tol))[0][0]
-    idx_leve = np.nonzero((r_s.values[1:] > tol) & (r_s.values[:-1] < tol))[0][0] + 1
+    idx_couche = np.nonzero((zenith.values[1:] > 90.) & (zenith.values[:-1] < 90.))[0][0]
+    idx_leve = np.nonzero((zenith.values[1:] < 90.) & (zenith.values[:-1] > 90.))[0][0] + 1
     if idx_couche > idx_leve:
         clarete[:idx_leve+1] = clarete[idx_leve + 1]
         clarete[idx_couche:] = clarete[idx_couche - 1]
@@ -68,7 +67,7 @@ def calcul_rayonnement_net_ondes_longues(df, ee, site):
     r_nl = SIGMA * df['t']**4 * (0.34 - 0.14 * np.sqrt(ee)) * (
         1.35 * clarete - 0.35)
 
-    return r_nl
+    return r_nl, zenith
 
 def calcul_etp(df, latitude, longitude, altitude):
     '''Calcul de l'évapotranspiration potentielle pour une station.'''
@@ -93,15 +92,18 @@ def calcul_etp(df, latitude, longitude, altitude):
 
     # Calcul du rayonnement net
     r_ns = calcul_rayonnement_net_ondes_courtes(df)
-    r_nl = calcul_rayonnement_net_ondes_longues(df, ee, site)
+    r_nl, zenith = calcul_rayonnement_net_ondes_longues(df, ee, site)
     r_n = r_ns - r_nl
-    
+
+    # Calcul du flux du sol
+    g_sol = (0.1 * r_n).where(zenith < 90., 0.5 * r_n)
+   
     # Calcul de la vitesse du vent à 2 m à partir de celle à 10 m
     u2 = df['ff'] * 4.87 / np.log(67.8 * 10 - 5.42)
 
     # Calcul de l'ETP (mm h-1)
     denominateur = delta + gamma * (1. + 0.34 * u2)
-    etp1 = np.maximum(0, delta * r_n / LAMBDA / denominateur)
+    etp1 = np.maximum(0, delta * (r_n - g_sol) / LAMBDA / denominateur)
     etp2 = np.maximum(0, gamma * 37. / df['t'] * u2 * (es - ee) / denominateur)
     etp = etp1 + etp2
 
