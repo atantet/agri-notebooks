@@ -8,25 +8,30 @@ import requests
 METEOFRANCE_HOST = 'https://public-api.meteofrance.fr'
 METEOFRANCE_DOMAIN = 'public'
 METEOFRANCE_VERSION = 'v1'
-METEOFRANCE_FREQUENCE = 'horaire'
 METEOFRANCE_DIR_LISTE_STATIONS = 'liste-stations'
-METEOFRANCE_API_STATION = ''
-METEOFRANCE_GRANULARITE_STATION = 'station'
-METEOFRANCE_API_PAQUET = 'DPPaquetObs'
-METEOFRANCE_GRANULARITE_PAQUET = 'paquet'
+METEOFRANCE_AVAILABLE_APIS = ['DPObs', 'DPPaquetObs', 'DPClim']
+METEOFRANCE_GRANULARITE = {
+    'DPObs': 'station',
+    'DPPaquetObs': 'paquet',
+    'DPClim': 'commande-station'
+}
 METEOFRANCE_FMT = 'csv'
 
 # URL de la liste des stations
-URL_LISTE_STATIONS_STATION = (f'{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{METEOFRANCE_API_STATION}/'
-                              f'{METEOFRANCE_VERSION}/{METEOFRANCE_DIR_LISTE_STATIONS}')
-URL_LISTE_STATIONS_PAQUET = (f'{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{METEOFRANCE_API_PAQUET}/'
-                             f'{METEOFRANCE_VERSION}/{METEOFRANCE_DIR_LISTE_STATIONS}')
+URL_LISTE_STATIONS = {
+    api: (
+        f"{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{api}/"
+        f"{METEOFRANCE_VERSION}/{METEOFRANCE_DIR_LISTE_STATIONS}")
+    for api in METEOFRANCE_AVAILABLE_APIS
+}
 
 # URL de base des données horaires
-URL_DONNEE_STATION = (f'{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{METEOFRANCE_API_STATION}/'
-                      f'{METEOFRANCE_VERSION}/{METEOFRANCE_GRANULARITE_STATION}/{METEOFRANCE_FREQUENCE}')
-URL_DONNEE_PAQUET = (f'{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{METEOFRANCE_API_PAQUET}/'
-                     f'{METEOFRANCE_VERSION}/{METEOFRANCE_GRANULARITE_PAQUET}/{METEOFRANCE_FREQUENCE}')
+URL_DONNEE = {
+    api: (
+        f"{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{api}/"
+        f"{METEOFRANCE_VERSION}/{METEOFRANCE_GRANULARITE[api]}")
+    for api in METEOFRANCE_AVAILABLE_APIS
+}
 
 # Definitions pour accéder à l'API Météo-France via un token OAuth2
 # unique application id : you can find this in the curl's command to generate jwt token 
@@ -34,12 +39,25 @@ URL_DONNEE_PAQUET = (f'{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{METEOFRANCE_API_
 TOKEN_URL = "https://portail-api.meteofrance.fr/token"
 
 # Étiquettes de la latitude et de la longitude
-LATLON_LABELS = ['Latitude', 'Longitude']
+LATLON_LABELS = {
+    'DPObs': ['Latitude', 'Longitude'],
+    'DPPaquetObs': ['Latitude', 'Longitude'],
+    'DPClim': ['lat', 'lon']
+}
+
+STATION_NAME_LABEL = {
+    'DPObs': 'Nom_usuel',
+    'DPPaquetObs': 'Nom_usuel',
+    'DPClim': 'nom'
+}
 
 class Client(object):
-    def __init__(self, application_id):
+    def __init__(self, application_id, api):
         self.session = requests.Session()
         self.application_id = application_id
+        self.api = api
+        self.latlon_labels = LATLON_LABELS[self.api]
+        self.station_name_label = STATION_NAME_LABEL[self.api]
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
@@ -55,6 +73,8 @@ class Client(object):
 
             # Re-dispatch the request that previously failed
             response = self.session.request(method, url, **kwargs)
+
+        response.raise_for_status()
 
         return response
 
@@ -82,35 +102,49 @@ class Client(object):
         # Update session with fresh token
         self.session.headers.update({'Authorization': 'Bearer %s' % token})
 
-def response_text_to_frame(response, **read_csv_kwargs):
-    return pd.read_csv(StringIO(response.text), sep=';', **read_csv_kwargs)
+def response_text_to_frame(response, **kwargs):
+    try:
+        df = pd.read_csv(StringIO(response.text), sep=';', **kwargs)
+    except TypeError:
+        df = pd.read_json(StringIO(response.text)).set_index('id')
+    
+    return df
 
-def demande_liste_stations(client):
+def demande_liste_stations(client, frequence=None, params=None):
     '''Demande de la liste des stations.'''
-    # Choix de l'api
-    url_liste_stations = URL_LISTE_STATIONS_PAQUET
+    url = URL_LISTE_STATIONS[client.api]
 
-    response_liste_stations = client.request('GET', url_liste_stations, verify=False)
-    df = response_text_to_frame(response_liste_stations, index_col='Id_station')
+    if frequence is not None:
+        url += f'/{frequence}'
+    
+    response = client.request('GET', url, params=params, verify=False)
+
+    df = response_text_to_frame(response, index_col='Id_station')
 
     return df
 
-def demande_donnee_station_date(client, id_station, date, verify=False):
-    '''Demande des données horaires pour une station et une date données.'''
-    # Paramètres définissant la station, la date et le format des données
-    params = {'id_station': id_station, 'date': date, 'format': METEOFRANCE_FMT}
+def demande_donnee(client, params, frequence=None, verify=False):
+    '''Demande des données d'observations.'''
+    url = URL_DONNEE[client.api]
+
+    if frequence is not None:
+        url += f'/{frequence}'
 
     # Demande de la liste des stations
     response = client.request(
-        'GET', URL_DONNEE_STATION, verify=verify, params=params)
+        'GET', url, verify=verify, params=params)
 
     return response
 
-def compiler_donnee_des_stations_date(client, df_liste_stations, date):
+def compiler_donnee_des_stations_date(
+    client, df_liste_stations, date, frequence=None):
     df = pd.DataFrame(dtype=float)
     for id_station in df_liste_stations.index:
+        # Paramètres définissant la station, la date et le format des données
+        params = {'id_station': id_station, 'date': date, 'format': METEOFRANCE_FMT}
+        
         # Requête pour la station
-        response = demande_donnee_station_date(client, id_station, date)
+        response = demande_donnee(client, params, frequence=frequence)
 
         # DataFrame de la station
         s_station = response_text_to_frame(response).iloc[0]
@@ -121,24 +155,17 @@ def compiler_donnee_des_stations_date(client, df_liste_stations, date):
         
     return df
 
-def demande_donnee_departement(client, id_departement, verify=False):
-    '''Demande des données empaquetées pour un département.'''
-    # Paramètres définissant le département et le format des données
-    params = {'id-departement': id_departement, 'format': METEOFRANCE_FMT}
-
-    # Demande de la liste des stations
-    response = client.request(
-        'GET', URL_DONNEE_PAQUET, verify=verify, params=params)
-
-    return response
-
-def compiler_donnee_des_departements(client, df_liste_stations):
+def compiler_donnee_des_departements(
+    client, df_liste_stations, frequence=None):
     liste_id_departements = np.unique(
         [_ // 1000000 for _ in df_liste_stations.index])
     df_toutes = pd.DataFrame(dtype=float)
     for id_departement in liste_id_departements:
+        # Paramètres définissant le département et le format des données
+        params = {'id-departement': id_departement, 'format': METEOFRANCE_FMT}
+    
         # Requête pour la station
-        response = demande_donnee_departement(client, id_departement)
+        response = demande_donnee(client, params, frequence=frequence)
 
         # DataFrame pour le département indexé par identifiant station et par date
         time_col = 'validity_time'
@@ -153,8 +180,8 @@ def compiler_donnee_des_departements(client, df_liste_stations):
 
     # Réindexer à partir des noms usuels
     id_stations_df = df.index.to_frame()['geo_id_insee']
-    liste_noms_stations = [df_liste_stations.loc[_, 'Nom_usuel']
+    liste_noms_stations = [df_liste_stations.loc[_, client.station_name_label]
                            for _ in id_stations_df]
-    df.insert(0, 'Nom_usuel', liste_noms_stations)
+    df.insert(0, client.station_name_label, liste_noms_stations)
         
     return df
