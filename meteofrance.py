@@ -40,6 +40,28 @@ ID_STATION_LABEL = {
     'DPClim': 'id'
 }
 
+# Étiquette du drapeau d'ouverture des stations
+OUVERT_STATION_LABEL = {
+    'DPObs': None,
+    'DPPaquetObs': None,
+    'DPClim': 'posteOuvert'
+}
+
+# Étiquette du drapeau du caractère public des stations
+PUBLIC_STATION_LABEL = {
+    'DPObs': None,
+    'DPPaquetObs': None,
+    'DPClim': 'postePublic'
+}
+
+# Étiquette du type de station
+TYPE_STATION_LABEL = {
+    'DPObs': None,
+    'DPPaquetObs': None,
+    'DPClim': 'typePoste'
+}
+
+
 # Dossier des données
 DATA_DIR = Path('data')
 
@@ -54,6 +76,9 @@ class Client(object):
         self.latlon_labels = LATLON_LABELS[self.api]
         self.station_name_label = STATION_NAME_LABEL[self.api]
         self.id_station_label = ID_STATION_LABEL[self.api]
+        self.ouvert_station_label = OUVERT_STATION_LABEL[self.api]
+        self.public_station_label = PUBLIC_STATION_LABEL[self.api]
+        self.type_station_label = TYPE_STATION_LABEL[self.api]
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
@@ -217,4 +242,14 @@ def compiler_donnee_des_departements(
                            for _ in id_stations_df]
     df.insert(0, client.station_name_label, liste_noms_stations)
         
+    return df
+
+def filtrer_stations_valides(client, df_brute):
+    validite = (df_brute[client.ouvert_station_label] &
+                df_brute[client.public_station_label] &
+                (df_brute[client.type_station_label] != 5))
+    
+    df = df_brute.loc[validite].drop(
+        [client.ouvert_station_label, client.public_station_label], axis=1)
+
     return df
