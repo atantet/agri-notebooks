@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import requests
+import time
 import warnings
 
 # Host
@@ -40,6 +41,13 @@ ID_STATION_LABEL = {
     'DPClim': 'id'
 }
 
+# Étiquette des identifiants des stations dans les donnees
+ID_STATION_DONNEE_LABEL = {
+    'DPObs': 'geo_id_insee',
+    'DPPaquetObs': 'geo_id_insee',
+    'DPClim': 'POSTE'
+}
+
 # Étiquette du drapeau d'ouverture des stations
 OUVERT_STATION_LABEL = {
     'DPObs': None,
@@ -61,6 +69,32 @@ TYPE_STATION_LABEL = {
     'DPClim': 'typePoste'
 }
 
+# Étiquette de l'indice temporel
+TIME_LABEL = {
+    'DPObs': 'validity_time',
+    'DPPaquetObs': 'validity_time',
+    'DPClim': 'DATE'
+}
+
+# Étiquettes des variables météorologiques
+VARIABLES_LABELS = {
+    'DPObs': {
+        'rayonnement_global': 'ray_glo01',
+        'temperature_2m': 't',
+        'humidite_relative': 'u',
+        'vitesse_vent_10m': 'ff'
+    },
+    'DPPaquetObs': {
+        'rayonnement_global': 'ray_glo01',
+        'temperature_2m': 't',
+        'humidite_relative': 'u',
+        'vitesse_vent_10m': 'ff'
+    },
+    'DPClim': {
+        'etp': 'ETPGRILLE',
+        'precipitation': 'RR'
+    }
+}
 
 # Dossier des données
 DATA_DIR = Path('data')
@@ -79,6 +113,10 @@ class Client(object):
         self.ouvert_station_label = OUVERT_STATION_LABEL[self.api]
         self.public_station_label = PUBLIC_STATION_LABEL[self.api]
         self.type_station_label = TYPE_STATION_LABEL[self.api]
+        self.time_label = TIME_LABEL[self.api]
+        self.id_station_donnee_label = ID_STATION_DONNEE_LABEL[self.api]
+        self.variables_labels = VARIABLES_LABELS[self.api]
+        self.inv_variables_labels = {value: key for key, value in self.variables_labels.items()}
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
@@ -150,12 +188,33 @@ def demande(client, section, params=None, frequence=None, verify=False):
 
     return response
 
+def get_str_date(date):
+    return date.replace('-', '').replace(':', '')
+
+def liste_id_stations_vers_liste_id_departements(df_liste_stations):
+    return np.unique([_ // 1000000 for _ in df_liste_stations.index])
+
 def get_filepath_liste_stations(client, departement):
     filename = f'liste_stations_{client.api}_{departement:d}.csv'
     parent = Path(DATA_DIR, client.api)
     parent.mkdir(parents=True, exist_ok=True)
     filepath = Path(parent, filename)
 
+    return filepath
+
+def get_filepath_donnees_periode(
+    client, df_liste_stations, date_deb_periode, date_fin_periode):
+    id_departements = liste_id_stations_vers_liste_id_departements(
+        df_liste_stations)
+    str_dep = '_'.join([str(_) for _ in id_departements])
+    str_nn = f"nn{len(df_liste_stations):d}"
+    str_date_deb_periode = get_str_date(date_deb_periode)
+    str_date_fin_periode = get_str_date(date_fin_periode)
+    filename = f'donnees_{client.api}_{str_dep}_{str_nn}_{str_date_deb_periode}_{str_date_fin_periode}.csv'
+    parent = Path(DATA_DIR, client.api)
+    parent.mkdir(parents=True, exist_ok=True)
+    filepath = Path(parent, filename)
+    
     return filepath
 
 def compiler_donnee_des_stations_date(
@@ -194,41 +253,85 @@ def compiler_commandes_des_stations_periode(
         section = 'commande-station'
         response = demande(client, section, params=params, frequence=frequence)
 
-        # DataFrame de la station
+        # Récupération de l'identifiant de la commande pour la station
         id_commandes[id_station] = (
             response.json()['elaboreProduitAvecDemandeResponse']['return'])
 
     return id_commandes
 
-def compiler_donnee_des_stations_depuis_commandes(
+def inserer_noms_stations(client, df, df_liste_stations):
+    ''' Insertion des noms des stations.'''
+    id_stations_df = df.index.to_frame()[client.id_station_donnee_label]
+    liste_noms_stations = [df_liste_stations.loc[_, client.station_name_label]
+                           for _ in id_stations_df]
+    df.insert(0, client.station_name_label, liste_noms_stations)
+
+
+
+    
+def compiler_telechargement_des_stations_periode(
     client, df_liste_stations, date_deb_periode, date_fin_periode,
-    frequence=None):
+    frequence=None,
+    desired_status_code=201, timeout=300, retry_interval=10):
     id_commandes = compiler_commandes_des_stations_periode(
         client, df_liste_stations, date_deb_periode, date_fin_periode,
         frequence=frequence)
+    
+    df = pd.DataFrame(dtype=float)
+    for id_station, id_cmde in id_commandes.items():    
+                
+        # Requête pour la station
+        section = 'commande'
+        params = {'id-cmde': id_cmde}
 
-    for id_station, id_cmde in id_commandes.items():
-        pass
+        start_time = time.time()
+        while True:
+            response = demande(client, section, params=params, frequence='fichier')
+            
+            # Check if the status code matches
+            if response.status_code == desired_status_code:
+                break
+            else:
+                print(f"Received status code {response.status_code}. Retrying...")
         
+            # Check if the timeout has been reached
+            if time.time() - start_time > timeout:
+                raise requests.exceptions.Timeout(
+                    f"Timeout reached after {timeout} seconds "
+                    f"without receiving status code {desired_status_code}.")
+
+            # Wait before the next attempt
+            time.sleep(retry_interval)
+
+        # DataFrame de la station
+        df_station = response_text_to_frame(
+            client, response, parse_dates=[client.time_label],
+            index_col=[client.id_station_donnee_label, client.time_label],
+            decimal=',')
+        
+        # Compilation
+        df = pd.concat([df, df_station])
+
+    inserer_noms_stations(client, df, df_liste_stations)
+        
+    return df      
 
 def compiler_donnee_des_departements(
     client, df_liste_stations, frequence=None):
-    liste_id_departements = np.unique(
-        [_ // 1000000 for _ in df_liste_stations.index])
+    id_departements = liste_id_stations_vers_liste_id_departements(
+        df_liste_stations)
     df_toutes = pd.DataFrame(dtype=float)
-    for id_dep in liste_id_departements:
-        # Paramètres définissant le département et le format des données
-        params = {'id-departement': id_dep, 'format': FMT}
-    
+    params = {'format': FMT}
+    for id_dep in id_departements:
         # Requête pour la station
         section = 'paquet'
+        params['id-departement'] = id_dep 
         response = demande(client, section, params=params, frequence=frequence)
 
         # DataFrame pour le département indexé par identifiant station et par date
-        time_col = 'validity_time'
         df_departement = response_text_to_frame(
-            client, response, parse_dates=[time_col]).set_index(
-            ['geo_id_insee', time_col])
+            client, response, parse_dates=[client.time_label]).set_index(
+            [client.id_station_donnee_label, client.time_label])
         
         # Compilation
         df_toutes = pd.concat([df_toutes, df_departement])
@@ -236,11 +339,7 @@ def compiler_donnee_des_departements(
     # Sélection des stations de la liste
     df = df_toutes.loc[df_liste_stations.index]
 
-    # Réindexer à partir des noms usuels
-    id_stations_df = df.index.to_frame()['geo_id_insee']
-    liste_noms_stations = [df_liste_stations.loc[_, client.station_name_label]
-                           for _ in id_stations_df]
-    df.insert(0, client.station_name_label, liste_noms_stations)
+    inserer_noms_stations(client, df, df_liste_stations)
         
     return df
 

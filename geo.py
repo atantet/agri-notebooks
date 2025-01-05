@@ -47,7 +47,7 @@ def selection_plus_proches_voisins(
     dist_km = np.round(dist_rad * RAYON_TERRE_KM).astype(int)
 
     # Sélection des plus proches voisins
-    df_liste_stations_nn = df_liste_stations.iloc[ind]
+    df_liste_stations_nn = df_liste_stations.iloc[ind].copy()
     df_liste_stations_nn.loc[:, 'distance'] = dist_km
     
     return df_liste_stations_nn

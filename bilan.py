@@ -56,38 +56,43 @@ def calcul_reserve_facilement_utilisable(
     ''' Calcul de la RFU (mm).'''
     return ru * ru_vers_rfu
 
-def calcul_etm_culture(culture, stade, s_meteo, etp_label='etp'):
+def calcul_etm_culture(culture, stade, df_meteo, etp_label='etp'):
     ''' Calcul de l'évalotranspiration maximale de la culture (mm).'''
     # KC de la culture pour ce stade
     kc_culture = KC[culture][stade]
 
-    etm_culture = kc_culture * s_meteo.loc[etp_label]
+    etm_culture = kc_culture * df_meteo[etp_label]
 
     return etm_culture
 
 def calcul_bilan(
     texture, fraction_cailloux,
     culture, stade,
-    s_meteo,
+    df_meteo,
     fraction_remplie=FRACTION_REMPLIE_PAR_DEFAUT, ru_vers_rfu=RU_VERS_RFU_PAR_DEFAUT,
-    rfu_cible=None, precipitation_label='rr1'):
+    rfu_cible=None, precipitation_label='precipitation'):
     ''' Calcul du besoin en irrigation (mm).'''
-    s = pd.Series(dtype=float)
+    if isinstance(df_meteo, pd.Series):
+        df = pd.Series(dtype=float)
+    else:
+        df = pd.DataFrame(index=df_meteo.index, dtype=float)
 
-    s.loc['ru'], s.loc['profondeur_terrefine'], s.loc['profondeur_enracinement'] = (
+    df[['ru', 'profondeur_terrefine', 'profondeur_enracinement']] = (
         calcul_reserve_utile(texture, fraction_cailloux, culture, fraction_remplie))
     
-    s.loc['rfu'] = calcul_reserve_facilement_utilisable(s.loc['ru'], ru_vers_rfu)
+    df['rfu'] = calcul_reserve_facilement_utilisable(df['ru'], ru_vers_rfu)
 
-    s.loc['etm_culture'] = calcul_etm_culture(culture, stade, s_meteo)
+    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo)
 
     if rfu_cible is None:
-        rfu_cible = s.loc['rfu']
-    s.loc['rfu_cible'] = rfu_cible
+        rfu_cible = df['rfu']
+    df['rfu_cible'] = rfu_cible
     
-    s.loc['precipitation'] = s_meteo.loc[precipitation_label]
+    df[precipitation_label] = df_meteo[precipitation_label]
 
-    s.loc['besoin_irrigation'] = s.loc['rfu_cible'] + s.loc['etm_culture'] - (
-        s.loc['rfu'] + s.loc['precipitation'])
+    df['besoin_irrigation'] = df['rfu_cible'] + df['etm_culture'] - (
+        df['rfu'] + df[precipitation_label])
 
-    return s
+    df['irrigation'] = df['besoin_irrigation'] > 0
+
+    return df
