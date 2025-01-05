@@ -2,36 +2,17 @@ from io import StringIO
 import json
 import numpy as np
 import pandas as pd
+from pathlib import Path
 import requests
+import warnings
 
 # Host
-METEOFRANCE_HOST = 'https://public-api.meteofrance.fr'
-METEOFRANCE_DOMAIN = 'public'
-METEOFRANCE_VERSION = 'v1'
-METEOFRANCE_DIR_LISTE_STATIONS = 'liste-stations'
-METEOFRANCE_AVAILABLE_APIS = ['DPObs', 'DPPaquetObs', 'DPClim']
-METEOFRANCE_GRANULARITE = {
-    'DPObs': 'station',
-    'DPPaquetObs': 'paquet',
-    'DPClim': 'commande-station'
-}
-METEOFRANCE_FMT = 'csv'
-
-# URL de la liste des stations
-URL_LISTE_STATIONS = {
-    api: (
-        f"{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{api}/"
-        f"{METEOFRANCE_VERSION}/{METEOFRANCE_DIR_LISTE_STATIONS}")
-    for api in METEOFRANCE_AVAILABLE_APIS
-}
-
-# URL de base des données horaires
-URL_DONNEE = {
-    api: (
-        f"{METEOFRANCE_HOST}/{METEOFRANCE_DOMAIN}/{api}/"
-        f"{METEOFRANCE_VERSION}/{METEOFRANCE_GRANULARITE[api]}")
-    for api in METEOFRANCE_AVAILABLE_APIS
-}
+HOST = 'https://public-api.meteofrance.fr'
+DOMAIN = 'public'
+VERSION = 'v1'
+SECTION_LISTE_STATIONS = 'liste-stations'
+AVAILABLE_APIS = ['DPObs', 'DPPaquetObs', 'DPClim']
+FMT = 'csv'
 
 # Definitions pour accéder à l'API Météo-France via un token OAuth2
 # unique application id : you can find this in the curl's command to generate jwt token 
@@ -45,19 +26,34 @@ LATLON_LABELS = {
     'DPClim': ['lat', 'lon']
 }
 
+# Étiquette des noms des stations
 STATION_NAME_LABEL = {
     'DPObs': 'Nom_usuel',
     'DPPaquetObs': 'Nom_usuel',
     'DPClim': 'nom'
 }
 
+# Étiquette des identifiants des stations
+ID_STATION_LABEL = {
+    'DPObs': 'Id_station',
+    'DPPaquetObs': 'Id_station',
+    'DPClim': 'id'
+}
+
+# Dossier des données
+DATA_DIR = Path('data')
+
 class Client(object):
     def __init__(self, application_id, api):
         self.session = requests.Session()
         self.application_id = application_id
+        if api not in AVAILABLE_APIS:
+            raise ValueError(f"Choix invalide: {api}. "
+                             f"Les choix possibles sont: {AVAILABLE_APIS}")
         self.api = api
         self.latlon_labels = LATLON_LABELS[self.api]
         self.station_name_label = STATION_NAME_LABEL[self.api]
+        self.id_station_label = ID_STATION_LABEL[self.api]
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
@@ -65,14 +61,18 @@ class Client(object):
             self.obtain_token()
             
         # Optimistically attempt to dispatch reqest
-        response = self.session.request(method, url, **kwargs)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            response = self.session.request(method, url, **kwargs)
 
         if self.token_has_expired(response):
             # We got an 'Access token expired' response => refresh token
             self.obtain_token()
 
             # Re-dispatch the request that previously failed
-            response = self.session.request(method, url, **kwargs)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                response = self.session.request(method, url, **kwargs)
 
         response.raise_for_status()
 
@@ -95,56 +95,54 @@ class Client(object):
         # Obtain new token
         data = {'grant_type': 'client_credentials'}
         headers = {'Authorization': 'Basic ' + self.application_id}
-        access_token_response = requests.post(
-            TOKEN_URL, data=data, verify=False, allow_redirects=False, headers=headers)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            access_token_response = requests.post(
+                TOKEN_URL, data=data, verify=False, allow_redirects=False, headers=headers)
         token = access_token_response.json()['access_token']
 
         # Update session with fresh token
         self.session.headers.update({'Authorization': 'Bearer %s' % token})
 
-def response_text_to_frame(response, **kwargs):
+def response_text_to_frame(client, response, **kwargs):
     try:
         df = pd.read_csv(StringIO(response.text), sep=';', **kwargs)
     except TypeError:
-        df = pd.read_json(StringIO(response.text)).set_index('id')
+        df = pd.read_json(StringIO(response.text)).set_index(
+            client.id_station_label)
     
     return df
 
-def demande_liste_stations(client, frequence=None, params=None):
+def demande(client, section, params=None, frequence=None, verify=False):
     '''Demande de la liste des stations.'''
-    url = URL_LISTE_STATIONS[client.api]
+    url = f"{HOST}/{DOMAIN}/{client.api}/{VERSION}/{section}"
 
     if frequence is not None:
         url += f'/{frequence}'
     
-    response = client.request('GET', url, params=params, verify=False)
-
-    df = response_text_to_frame(response, index_col='Id_station')
-
-    return df
-
-def demande_donnee(client, params, frequence=None, verify=False):
-    '''Demande des données d'observations.'''
-    url = URL_DONNEE[client.api]
-
-    if frequence is not None:
-        url += f'/{frequence}'
-
-    # Demande de la liste des stations
     response = client.request(
-        'GET', url, verify=verify, params=params)
+        'GET', url, params=params, verify=verify)
 
     return response
+
+def get_filepath_liste_stations(client, departement):
+    filename = f'liste_stations_{client.api}_{departement:d}.csv'
+    parent = Path(DATA_DIR, client.api)
+    parent.mkdir(parents=True, exist_ok=True)
+    filepath = Path(parent, filename)
+
+    return filepath
 
 def compiler_donnee_des_stations_date(
     client, df_liste_stations, date, frequence=None):
     df = pd.DataFrame(dtype=float)
     for id_station in df_liste_stations.index:
         # Paramètres définissant la station, la date et le format des données
-        params = {'id_station': id_station, 'date': date, 'format': METEOFRANCE_FMT}
+        params = {'id_station': id_station, 'date': date, 'format': FMT}
         
         # Requête pour la station
-        response = demande_donnee(client, params, frequence=frequence)
+        section = 'station'
+        response = demande(client, section, params=params, frequence=frequence)
 
         # DataFrame de la station
         s_station = response_text_to_frame(response).iloc[0]
@@ -155,22 +153,57 @@ def compiler_donnee_des_stations_date(
         
     return df
 
+def compiler_commandes_des_stations_periode(
+    client, df_liste_stations, date_deb_periode, date_fin_periode,
+    frequence=None):
+    params = {
+        'date-deb-periode': date_deb_periode,
+        'date-fin-periode': date_fin_periode
+    }
+    id_commandes = {}
+    for id_station in df_liste_stations.index:
+        # Paramètres définissant la station, la date et le format des données
+        params['id-station'] = id_station,
+        
+        # Requête pour la station
+        section = 'commande-station'
+        response = demande(client, section, params=params, frequence=frequence)
+
+        # DataFrame de la station
+        id_commandes[id_station] = (
+            response.json()['elaboreProduitAvecDemandeResponse']['return'])
+
+    return id_commandes
+
+def compiler_donnee_des_stations_depuis_commandes(
+    client, df_liste_stations, date_deb_periode, date_fin_periode,
+    frequence=None):
+    id_commandes = compiler_commandes_des_stations_periode(
+        client, df_liste_stations, date_deb_periode, date_fin_periode,
+        frequence=frequence)
+
+    for id_station, id_cmde in id_commandes.items():
+        pass
+        
+
 def compiler_donnee_des_departements(
     client, df_liste_stations, frequence=None):
     liste_id_departements = np.unique(
         [_ // 1000000 for _ in df_liste_stations.index])
     df_toutes = pd.DataFrame(dtype=float)
-    for id_departement in liste_id_departements:
+    for id_dep in liste_id_departements:
         # Paramètres définissant le département et le format des données
-        params = {'id-departement': id_departement, 'format': METEOFRANCE_FMT}
+        params = {'id-departement': id_dep, 'format': FMT}
     
         # Requête pour la station
-        response = demande_donnee(client, params, frequence=frequence)
+        section = 'paquet'
+        response = demande(client, section, params=params, frequence=frequence)
 
         # DataFrame pour le département indexé par identifiant station et par date
         time_col = 'validity_time'
         df_departement = response_text_to_frame(
-            response, parse_dates=[time_col]).set_index(['geo_id_insee', time_col])
+            client, response, parse_dates=[time_col]).set_index(
+            ['geo_id_insee', time_col])
         
         # Compilation
         df_toutes = pd.concat([df_toutes, df_departement])
