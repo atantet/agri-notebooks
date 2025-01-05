@@ -77,7 +77,7 @@ def calcul_bilan(
     else:
         df = pd.DataFrame(index=df_meteo.index, dtype=float)
 
-    df[['ru', 'profondeur_terrefine', 'profondeur_enracinement']] = (
+    df['ru'], df['profondeur_terrefine'], df['profondeur_enracinement'] = (
         calcul_reserve_utile(texture, fraction_cailloux, culture, fraction_remplie))
     
     df['rfu'] = calcul_reserve_facilement_utilisable(df['ru'], ru_vers_rfu)

@@ -82,19 +82,15 @@ VARIABLES_LABELS = {
         'rayonnement_global': 'ray_glo01',
         'temperature_2m': 't',
         'humidite_relative': 'u',
-        'vitesse_vent_10m': 'ff'
-    },
-    'DPPaquetObs': {
-        'rayonnement_global': 'ray_glo01',
-        'temperature_2m': 't',
-        'humidite_relative': 'u',
-        'vitesse_vent_10m': 'ff'
+        'vitesse_vent_10m': 'ff',
+        'precipitation': 'rr1'
     },
     'DPClim': {
         'etp': 'ETPGRILLE',
         'precipitation': 'RR'
     }
 }
+VARIABLES_LABELS['DPPaquetObs'] = VARIABLES_LABELS['DPObs']
 
 # Dossier des données
 DATA_DIR = Path('data')
@@ -194,15 +190,18 @@ def get_str_date(date):
 def liste_id_stations_vers_liste_id_departements(df_liste_stations):
     return np.unique([_ // 1000000 for _ in df_liste_stations.index])
 
-def get_filepath_liste_stations(client, departement):
-    filename = f'liste_stations_{client.api}_{departement:d}.csv'
+def get_filepath_liste_stations(client, departement=None):
+    filename = f"liste_stations_{client.api}"
+    if departement is not None:
+        filename += f"_{departement:d}"
+    filename += ".csv"
     parent = Path(DATA_DIR, client.api)
     parent.mkdir(parents=True, exist_ok=True)
     filepath = Path(parent, filename)
 
     return filepath
 
-def get_filepath_donnees_periode(
+def get_filepath_donnee_periode(
     client, df_liste_stations, date_deb_periode, date_fin_periode):
     id_departements = liste_id_stations_vers_liste_id_departements(
         df_liste_stations)
