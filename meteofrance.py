@@ -202,13 +202,20 @@ def get_filepath_liste_stations(client, departement=None):
     return filepath
 
 def get_filepath_donnee_periode(
-    client, df_liste_stations, date_deb_periode, date_fin_periode):
-    id_departements = liste_id_stations_vers_liste_id_departements(
-        df_liste_stations)
+    client, date_deb_periode, date_fin_periode,
+    df_liste_stations=None, id_departements=None, nn_nombre=None):
+    if id_departements is None:
+        id_departements = liste_id_stations_vers_liste_id_departements(
+            df_liste_stations)
     str_dep = '_'.join([str(_) for _ in id_departements])
-    str_nn = f"nn{len(df_liste_stations):d}"
+
+    if nn_nombre is None:
+        nn_nombre = len(df_liste_stations)
+    str_nn = f"nn{nn_nombre:d}"
+    
     str_date_deb_periode = get_str_date(date_deb_periode)
     str_date_fin_periode = get_str_date(date_fin_periode)
+    
     filename = f'donnees_{client.api}_{str_dep}_{str_nn}_{str_date_deb_periode}_{str_date_fin_periode}.csv'
     parent = Path(DATA_DIR, client.api)
     parent.mkdir(parents=True, exist_ok=True)
