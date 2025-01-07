@@ -70,7 +70,7 @@ def calcul_bilan(
     culture, stade,
     df_meteo,
     fraction_remplie=FRACTION_REMPLIE_PAR_DEFAUT, ru_vers_rfu=RU_VERS_RFU_PAR_DEFAUT,
-    rfu_cible=None, precipitation_label='precipitation'):
+    rfu_cible=None, precipitation_label='precipitation', etp_label='etp'):
     ''' Calcul du besoin en irrigation (mm).'''
     if isinstance(df_meteo, pd.Series):
         df = pd.Series(dtype=float)
@@ -86,7 +86,9 @@ def calcul_bilan(
         rfu_cible = df['rfu']
     df['rfu_cible'] = rfu_cible
 
-    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo)
+    df['etp'] = df_meteo[etp_label]
+    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo,
+                                           etp_label=etp_label)
     
     df[precipitation_label] = df_meteo[precipitation_label]
 

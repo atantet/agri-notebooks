@@ -111,7 +111,7 @@ VARIABLES_LABELS['DPPaquetObs'] = VARIABLES_LABELS['DPObs']
 DATA_DIR = Path('data')
 
 class Client(object):
-    def __init__(self, application_id, api):
+    def __init__(self, api, application_id=None):
         self.session = requests.Session()
         self.application_id = application_id
         if api not in AVAILABLE_APIS:
