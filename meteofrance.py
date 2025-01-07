@@ -79,15 +79,23 @@ TIME_LABEL = {
 # Étiquettes des variables météorologiques
 VARIABLES_LABELS = {
     'DPObs': {
-        'rayonnement_global': 'ray_glo01',
-        'temperature_2m': 't',
-        'humidite_relative': 'u',
-        'vitesse_vent_10m': 'ff',
-        'precipitation': 'rr1'
+        'horaire': {
+            'rayonnement_global': 'ray_glo01',
+            'temperature_2m': 't',
+            'humidite_relative': 'u',
+            'vitesse_vent_10m': 'ff',
+            'precipitation': 'rr1'
+        }
     },
     'DPClim': {
-        'etp': 'ETPGRILLE',
-        'precipitation': 'RR'
+        'quotidienne': {
+            'rayonnement_global': 'GLOT',
+            'temperature_2m': 'TM',
+            'humidite_relative': 'UM',
+            'vitesse_vent_10m': 'FFM',
+            'precipitation': 'RR',
+            'etp': 'ETPGRILLE'
+        }
     }
 }
 VARIABLES_LABELS['DPPaquetObs'] = VARIABLES_LABELS['DPObs']
@@ -112,7 +120,6 @@ class Client(object):
         self.time_label = TIME_LABEL[self.api]
         self.id_station_donnee_label = ID_STATION_DONNEE_LABEL[self.api]
         self.variables_labels = VARIABLES_LABELS[self.api]
-        self.inv_variables_labels = {value: key for key, value in self.variables_labels.items()}
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
@@ -356,5 +363,11 @@ def filtrer_stations_valides(client, df_brute):
     
     df = df_brute.loc[validite].drop(
         [client.ouvert_station_label, client.public_station_label], axis=1)
+
+    return df
+
+def renommer_variables(client, df, frequence):
+    labels_variables = {v: k for k, v in client.variables_labels[frequence].items()}
+    df = df.rename(columns=labels_variables)
 
     return df

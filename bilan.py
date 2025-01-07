@@ -82,11 +82,11 @@ def calcul_bilan(
     
     df['rfu'] = calcul_reserve_facilement_utilisable(df['ru'], ru_vers_rfu)
 
-    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo)
-
     if rfu_cible is None:
         rfu_cible = df['rfu']
     df['rfu_cible'] = rfu_cible
+
+    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo)
     
     df[precipitation_label] = df_meteo[precipitation_label]
 
