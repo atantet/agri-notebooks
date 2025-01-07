@@ -88,6 +88,13 @@ VARIABLES_LABELS = {
         }
     },
     'DPClim': {
+        'horaire': {
+            'rayonnement_global': 'GLO',
+            'temperature_2m': 'T',
+            'humidite_relative': 'U',
+            'vitesse_vent_10m': 'FF',
+            'precipitation': 'RR1',
+        }
         'quotidienne': {
             'rayonnement_global': 'GLOT',
             'temperature_2m': 'TM',
