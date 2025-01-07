@@ -179,6 +179,7 @@ class Client(object):
 
 def response_text_to_frame(client, response, **kwargs):
     try:
+        
         df = pd.read_csv(StringIO(response.text), sep=';', **kwargs)
     except TypeError:
         df = pd.read_json(StringIO(response.text)).set_index(
@@ -204,10 +205,12 @@ def get_str_date(date):
 def liste_id_stations_vers_liste_id_departements(df_liste_stations):
     return np.unique([_ // 1000000 for _ in df_liste_stations.index])
 
-def get_filepath_liste_stations(client, departement=None):
+def get_filepath_liste_stations(client, frequence=None, id_departement=None):
     filename = f"liste_stations_{client.api}"
-    if departement is not None:
-        filename += f"_{departement:d}"
+    if frequence is not None:
+        filename += f"_{frequence}"
+    if id_departement is not None:
+        filename += f"_{id_departement:d}"
     filename += ".csv"
     parent = Path(DATA_DIR, client.api)
     parent.mkdir(parents=True, exist_ok=True)
@@ -216,8 +219,11 @@ def get_filepath_liste_stations(client, departement=None):
     return filepath
 
 def get_filepath_donnee_periode(
-    client, date_deb_periode, date_fin_periode,
+    client, date_deb_periode, date_fin_periode, frequence=None,
     df_liste_stations=None, id_departements=None, nn_nombre=None):
+    filename = f"donnees_{client.api}"
+    if frequence is not None:
+        filename += f"_{frequence}"
     if id_departements is None:
         id_departements = liste_id_stations_vers_liste_id_departements(
             df_liste_stations)
@@ -230,7 +236,7 @@ def get_filepath_donnee_periode(
     str_date_deb_periode = get_str_date(date_deb_periode)
     str_date_fin_periode = get_str_date(date_fin_periode)
     
-    filename = f'donnees_{client.api}_{str_dep}_{str_nn}_{str_date_deb_periode}_{str_date_fin_periode}.csv'
+    filename += f"_{str_dep}_{str_nn}_{str_date_deb_periode}_{str_date_fin_periode}.csv"
     parent = Path(DATA_DIR, client.api)
     parent.mkdir(parents=True, exist_ok=True)
     filepath = Path(parent, filename)
@@ -291,7 +297,7 @@ def inserer_noms_stations(client, df, df_liste_stations):
     
 def compiler_telechargement_des_stations_periode(
     client, df_liste_stations, date_deb_periode, date_fin_periode,
-    frequence=None,
+    frequence=None, read_csv_kwargs=None,
     desired_status_code=201, timeout=300, retry_interval=10):
     id_commandes = compiler_commandes_des_stations_periode(
         client, df_liste_stations, date_deb_periode, date_fin_periode,
@@ -327,7 +333,7 @@ def compiler_telechargement_des_stations_periode(
         df_station = response_text_to_frame(
             client, response, parse_dates=[client.time_label],
             index_col=[client.id_station_donnee_label, client.time_label],
-            decimal=',')
+            decimal=',', **read_csv_kwargs)
         
         # Compilation
         df = pd.concat([df, df_station])
