@@ -285,19 +285,9 @@ def compiler_commandes_des_stations_periode(
 
     return id_commandes
 
-def inserer_noms_stations(client, df, df_liste_stations):
-    ''' Insertion des noms des stations.'''
-    id_stations_df = df.index.to_frame()[client.id_station_donnee_label]
-    liste_noms_stations = [df_liste_stations.loc[_, client.station_name_label]
-                           for _ in id_stations_df]
-    df.insert(0, client.station_name_label, liste_noms_stations)
-
-
-
-    
 def compiler_telechargement_des_stations_periode(
     client, df_liste_stations, date_deb_periode, date_fin_periode,
-    frequence=None, read_csv_kwargs=None,
+    frequence=None, read_csv_kwargs={},
     desired_status_code=201, timeout=300, retry_interval=10):
     id_commandes = compiler_commandes_des_stations_periode(
         client, df_liste_stations, date_deb_periode, date_fin_periode,
@@ -337,6 +327,8 @@ def compiler_telechargement_des_stations_periode(
         
         # Compilation
         df = pd.concat([df, df_station])
+
+    localisation_temps(df)
 
     inserer_noms_stations(client, df, df_liste_stations)
         
@@ -384,3 +376,16 @@ def renommer_variables(client, df, frequence):
     df = df.rename(columns=labels_variables)
 
     return df
+
+def inserer_noms_stations(client, df, df_liste_stations):
+    ''' Insertion des noms des stations.'''
+    id_stations_df = df.index.to_frame()[client.id_station_donnee_label]
+    liste_noms_stations = [df_liste_stations.loc[_, client.station_name_label]
+                           for _ in id_stations_df]
+    df.insert(0, client.station_name_label, liste_noms_stations)
+    
+def localisation_temps(df, tz='UTC'):
+    ''' Localisation UTC de l'indice temporel.'''
+    index = [df.index.levels[0],
+             pd.DatetimeIndex(df.index.levels[1], tz='UTC')]
+    df.index = df.index.set_levels(index)
