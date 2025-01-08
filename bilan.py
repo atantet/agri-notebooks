@@ -56,12 +56,12 @@ def calcul_reserve_facilement_utilisable(
     ''' Calcul de la RFU (mm).'''
     return ru * ru_vers_rfu
 
-def calcul_etm_culture(culture, stade, df_meteo, etp_label='etp'):
+def calcul_etm_culture(culture, stade, df_meteo):
     ''' Calcul de l'évalotranspiration maximale de la culture (mm).'''
     # KC de la culture pour ce stade
     kc_culture = KC[culture][stade]
 
-    etm_culture = kc_culture * df_meteo[etp_label]
+    etm_culture = kc_culture * df_meteo['etp']
 
     return etm_culture
 
@@ -70,7 +70,7 @@ def calcul_bilan(
     culture, stade,
     df_meteo,
     fraction_remplie=FRACTION_REMPLIE_PAR_DEFAUT, ru_vers_rfu=RU_VERS_RFU_PAR_DEFAUT,
-    rfu_cible=None, precipitation_label='precipitation', etp_label='etp'):
+    rfu_cible=None):
     ''' Calcul du besoin en irrigation (mm).'''
     if isinstance(df_meteo, pd.Series):
         df = pd.Series(dtype=float)
@@ -86,14 +86,13 @@ def calcul_bilan(
         rfu_cible = df['rfu']
     df['rfu_cible'] = rfu_cible
 
-    df['etp'] = df_meteo[etp_label]
-    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo,
-                                           etp_label=etp_label)
+    df['etp'] = df_meteo['etp']
+    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo)
     
-    df[precipitation_label] = df_meteo[precipitation_label]
+    df['precipitation'] = df_meteo['precipitation']
 
     df['besoin_irrigation'] = df['rfu_cible'] + df['etm_culture'] - (
-        df['rfu'] + df[precipitation_label])
+        df['rfu'] + df['precipitation'])
 
     df['irrigation'] = df['besoin_irrigation'] > 0
 
