@@ -51,18 +51,15 @@ def calcul_rayonnement_net_ondes_longues(df, ee, site):
     r_so.index = r_so.index.tz_convert('UTC')
 
     # Calcul de la clareté
-    clarete = np.minimum(1., (r_s / r_so).fillna(0.)).values
+    clarete = np.minimum(1., r_s / r_so)
 
     # Durant la nuit la clareté est suppossée égale à celle 2h avant le couché
     # Si des heures de journée avant la nuit ne sont pas disponibles on utilise
     # les heures après le levé
-    idx_couche = np.nonzero((zenith.values[1:] > 90.) & (zenith.values[:-1] < 90.))[0][0]
-    idx_leve = np.nonzero((zenith.values[1:] < 90.) & (zenith.values[:-1] > 90.))[0][0] + 1
-    if idx_couche > idx_leve:
-        clarete[:idx_leve+1] = clarete[idx_leve + 1]
-        clarete[idx_couche:] = clarete[idx_couche - 1]
-    else:
-        clarete[idx_couche:idx_leve+1] = clarete[idx_couche - 1]
+    is_day = zenith.values < 90.
+    is_day_short = np.roll(is_day, 1) & np.roll(is_day, -1)
+    clarete = clarete.where(is_day_short).ffill(
+        axis='index').bfill(axis='index')
 
     # Calcul du rayonnement net aux ondes longues
     r_nl = SIGMA * df['temperature_2m']**4 * (0.34 - 0.14 * np.sqrt(ee)) * (
