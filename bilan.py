@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -70,7 +71,7 @@ def calcul_bilan(
     culture, stade,
     df_meteo,
     fraction_remplie=FRACTION_REMPLIE_PAR_DEFAUT, ru_vers_rfu=RU_VERS_RFU_PAR_DEFAUT,
-    rfu_cible=None):
+    rfu_cible=None, seuil_irrigation=0., hauteur_vers_duree_irrigation=None):
     ''' Calcul du besoin en irrigation (mm).'''
     if isinstance(df_meteo, pd.Series):
         df = pd.Series(dtype=float)
@@ -94,6 +95,9 @@ def calcul_bilan(
     df['besoin_irrigation'] = df['rfu_cible'] + df['etm_culture'] - (
         df['rfu'] + df['precipitation'])
 
-    df['irrigation'] = df['besoin_irrigation'] > 0
+    df['irrigation'] = df['besoin_irrigation'] > seuil_irrigation
+
+    df['duree_irrigation'] = hauteur_vers_duree_irrigation * np.where(
+        df['irrigation'], df['besoin_irrigation'], 0)
 
     return df

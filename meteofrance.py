@@ -244,9 +244,9 @@ def get_filepath_liste_stations(client, frequence=None, id_departement=None):
     if id_departement is not None:
         filename += f"_{id_departement:d}"
     filename += ".csv"
-    parent = Path(DATA_DIR, client.api)
+    parent = DATA_DIR / client.api
     parent.mkdir(parents=True, exist_ok=True)
-    filepath = Path(parent, filename)
+    filepath = parent / filename
 
     return filepath
 
@@ -269,9 +269,9 @@ def get_filepath_donnee_periode(
     str_date_fin_periode = get_str_date(date_fin_periode)
     
     filename += f"_{str_dep}_{str_nn}_{str_date_deb_periode}_{str_date_fin_periode}.csv"
-    parent = Path(DATA_DIR, client.api)
+    parent = DATA_DIR / client.api
     parent.mkdir(parents=True, exist_ok=True)
-    filepath = Path(parent, filename)
+    filepath = parent / filename
     
     return filepath
 
