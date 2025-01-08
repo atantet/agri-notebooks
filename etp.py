@@ -87,7 +87,7 @@ def calcul_etp(df, latitude, longitude, altitude):
     gamma = FACTEUR_GAMMA * pression
 
     # Calcul de la pression de vapeur effective (kPa)
-    ee = es * df['humidite_relative'] / 100
+    ee = es * df['humidite_relative']
 
     # Calcul du rayonnement net
     r_ns = calcul_rayonnement_net_ondes_courtes(df)

@@ -76,7 +76,29 @@ TIME_LABEL = {
     'DPClim': 'DATE'
 }
 
-# Étiquettes des variables météorologiques
+# Conversion de unités des variables
+identite = lambda x: x
+VARIABLES_CONVERSION_UNITES = {
+    'DPObs': {
+        'rayonnement_global': identite,
+        'temperature_2m': identite,
+        'humidite_relative': lambda x: x / 100,
+        'vitesse_vent_10m': identite,
+        'precipitation': identite,
+        'etp': identite
+    },
+    'DPClim': {
+        'rayonnement_global': lambda x: x * 1.e4,
+        'temperature_2m': lambda x: x + 273.15,
+        'humidite_relative': lambda x: x / 100,
+        'vitesse_vent_10m': identite,
+        'precipitation': identite,
+        'etp': identite
+    }
+}
+VARIABLES_CONVERSION_UNITES['DPPaquetObs'] = VARIABLES_CONVERSION_UNITES['DPObs']
+
+# Étiquettes des variables
 VARIABLES_LABELS = {
     'DPObs': {
         'horaire': {
@@ -107,6 +129,15 @@ VARIABLES_LABELS = {
 }
 VARIABLES_LABELS['DPPaquetObs'] = VARIABLES_LABELS['DPObs']
 
+UNITES = {
+    'rayonnement_global': 'J m-2 jour-1',
+    'temperature_2m': 'K',
+    'humidite_relative': '-',
+    'vitesse_vent_10m': 'm s-1',
+    'precipitation': 'mm jour-1',
+    'etp': 'mm jour-1'
+}
+
 # Dossier des données
 DATA_DIR = Path('data')
 
@@ -127,6 +158,7 @@ class Client(object):
         self.time_label = TIME_LABEL[self.api]
         self.id_station_donnee_label = ID_STATION_DONNEE_LABEL[self.api]
         self.variables_labels = VARIABLES_LABELS[self.api]
+        self.variables_conversion_unites = VARIABLES_CONVERSION_UNITES[self.api]
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
@@ -389,3 +421,11 @@ def localisation_temps(df, tz='UTC'):
     index = [df.index.levels[0],
              pd.DatetimeIndex(df.index.levels[1], tz='UTC')]
     df.index = df.index.set_levels(index)
+
+def convertir_unites(client, df):
+    for variable, s in df.items():
+        df.loc[:, variable] = client.variables_conversion_unites[variable](s)
+    
+    return df
+
+    
