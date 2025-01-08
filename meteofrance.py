@@ -320,7 +320,7 @@ def compiler_commandes_des_stations_periode(
 def compiler_telechargement_des_stations_periode(
     client, df_liste_stations, date_deb_periode, date_fin_periode,
     frequence=None, read_csv_kwargs={},
-    desired_status_code=201, timeout=300, retry_interval=10):
+    desired_status_code=201, timeout=300, retry_interval=5):
     id_commandes = compiler_commandes_des_stations_periode(
         client, df_liste_stations, date_deb_periode, date_fin_periode,
         frequence=frequence)
