@@ -389,6 +389,9 @@ def compiler_donnee_des_departements(
     # Sélection des stations de la liste
     df = df_toutes.loc[df_liste_stations.index]
 
+    # Suppression des duplicatas
+    df = df[~df.index.duplicated(keep=False)]
+
     inserer_noms_stations(client, df, df_liste_stations)
         
     return df
