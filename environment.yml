@@ -6,9 +6,6 @@ channels:
   - defaults
 
 dependencies:
-  - bokeh>=3
-  - holoviews
-  - hvplot
   - numpy
   - pandas
   - panel>=1
