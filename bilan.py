@@ -4,7 +4,16 @@ import pandas as pd
 
 # Coefficients culturaux (KC) par culture et par stade
 KC = {
-    'Pomme de terre': {'Vegetation': 0.9, 'Maximale': 1.05}
+    'Pomme de terre': {
+        'Vegetation': 0.9,
+        'Maximale': 1.05
+    },
+    'Tomate': {
+        'De la plantation à la reprise': 0.2,
+        'De la reprise à la floraison du 3ème bouquet': 0.6,
+        'De la floraison du 3ème bouquet à la mi-récolte': 0.9,
+        'De la mi-récolte à la fin de la culture': 0.7
+    }
 }
 
 # Réserve Utile (RU) par cm de terre fine (mm/cm de terre fine) en fonction de la texture du sol
@@ -78,22 +87,24 @@ def calcul_bilan(
     else:
         df = pd.DataFrame(index=df_meteo.index, dtype=float)
 
-    df['ru'], df['profondeur_terrefine'], df['profondeur_enracinement'] = (
+    df['etp'] = -df_meteo['etp']
+
+    df['profondeur_enracinement'], df['profondeur_terrefine'], df['ru'] = (
         calcul_reserve_utile(texture, fraction_cailloux, culture, fraction_remplie))
     
     df['rfu'] = calcul_reserve_facilement_utilisable(df['ru'], ru_vers_rfu)
 
     if rfu_cible is None:
         rfu_cible = df['rfu']
-    df['rfu_cible'] = rfu_cible
-
-    df['etp'] = df_meteo['etp']
-    df['etm_culture'] = calcul_etm_culture(culture, stade, df_meteo)
     
     df['precipitation'] = df_meteo['precipitation']
+    
+    df['etm_culture'] = -calcul_etm_culture(culture, stade, df_meteo)
 
-    df['besoin_irrigation'] = df['rfu_cible'] + df['etm_culture'] - (
-        df['rfu'] + df['precipitation'])
+    df['besoin_irrigation'] = rfu_cible - (
+        df['rfu'] + df['precipitation'] + df['etm_culture'])
+    
+    df['rfu_cible'] = rfu_cible
 
     df['irrigation'] = df['besoin_irrigation'] > seuil_irrigation
 
