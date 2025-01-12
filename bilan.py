@@ -1,20 +1,15 @@
+import json
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 
 # Coefficients culturaux (KC) par culture et par stade
-KC = {
-    'Pomme de terre': {
-        'Vegetation': 0.9,
-        'Maximale': 1.05
-    },
-    'Tomate': {
-        'De la plantation à la reprise': 0.2,
-        'De la reprise à la floraison du 3ème bouquet': 0.6,
-        'De la floraison du 3ème bouquet à la mi-récolte': 0.9,
-        'De la mi-récolte à la fin de la culture': 0.7
-    }
-}
+FILEPATH_KC = Path("coefficients_culturaux_ardepi.json")
+
+# Lecture des coefficients culturaux
+with open(FILEPATH_KC) as f:
+    KC = json.load(f)
 
 # Réserve Utile (RU) par cm de terre fine (mm/cm de terre fine) en fonction de la texture du sol
 RU_PAR_CM_DE_TF = {
@@ -33,18 +28,30 @@ FRACTION_REMPLIE_PAR_DEFAUT = 1.
 
 # Profondeurs d'enracinement typiques
 PROFONDEUR_ENRACINEMENT_TYPIQUE = {
-    'Radis': 15.,
-    'Salade': 15.,
-    'Choux': 20.,
-    'Epinard': 20.,
-    'Oignon': 20.,
-    'Aubergine': 30.,
-    'Carotte': 30.,
-    'Courge': 30.,
-    'Courgette': 30.,
-    'Poivron': 30.,
-    'Pomme de terre': 30.,
-    'Tomate': 30.
+    "Ail": 20.,
+    "Artichaut": 20.,
+    "Asperge": 20.,
+    "Aubergine": 30.,
+    "Betterave": 20.,
+    "Carotte": 30.,
+    "Chou fleur": 20.,
+    "Choux": 20.,
+    "Courge": 30.,
+    "Courgette": 30.,
+    "Epinard": 20.,
+    "Fraisier": 30.,
+    "Haricot": 20.,
+    "Melon": 30.,
+    "Oignon": 20.,
+    "Poireau": 30.,
+    "Pois": 20.,
+    "Poivron": 30.,
+    "Pomme de terre": 30.,
+    "Radis": 15.,
+    "Salade": 15.,
+    "Soja": 20.,
+    "Tomate de conserve": 30.,
+    "Tomate": 30.
 }
 
 def calcul_reserve_utile(
