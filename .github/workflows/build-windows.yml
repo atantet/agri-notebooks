@@ -45,17 +45,17 @@ jobs:
         run: |
           conda init powershell
           conda activate agri_notebooks
-          pyinstaller --onefile --add-data "bilan_hydrique_observation_horaire.ipynb:." \
-                      --add-data "bilan.py:." \
-                      --add-data "meteofrance.py:." \
-                      --add-data "geo.py:." \
-                      --add-data "etp.py:." \
-                      --add-data "coefficients_culturaux_ardepi.json:." \
+          pyinstaller --onefile --add-data "bilan_hydrique_observation_horaire.ipynb;." `
+                      --add-data "bilan.py;." `
+                      --add-data "meteofrance.py;." `
+                      --add-data "geo.py;." `
+                      --add-data "etp.py;." `
+                      --add-data "coefficients_culturaux_ardepi.json;." `
                       launcher.py
 
       # Step 7: Upload the build artifact
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows_bilan_hydrique_app
           path: dist/
