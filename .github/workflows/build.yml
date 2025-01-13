@@ -31,8 +31,20 @@ jobs:
       # Step 3: Initialize Conda and activate environment
       - name: Initialize Conda
         run: |
-          conda init bash
-          source ~/.bashrc
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            # For macOS: Initialize Conda for zsh
+            conda init zsh
+            source ~/.zshrc
+          elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # For Linux: Initialize Conda for bash
+            conda init bash
+            source ~/.bashrc
+          elif [[ "$OS" == "Windows_NT" ]]; then
+            # For Windows: Initialize Conda for PowerShell
+            conda init powershell
+            # PowerShell is the default shell, no need to source a file
+            # Conda should be available directly after initialization
+          fi
           conda activate agri_notebooks
 
       # Step 4: Verify Conda environment
@@ -48,8 +60,20 @@ jobs:
       # Step 6: Build the executable with PyInstaller
       - name: Build Executable
         run: |
-          conda init bash
-          source ~/.bashrc
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            # For macOS: Initialize Conda for zsh
+            conda init zsh
+            source ~/.zshrc
+          elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # For Linux: Initialize Conda for bash
+            conda init bash
+            source ~/.bashrc
+          elif [[ "$OS" == "Windows_NT" ]]; then
+            # For Windows: Initialize Conda for PowerShell
+            conda init powershell
+            # PowerShell is the default shell, no need to source a file
+            # Conda should be available directly after initialization
+          fi
           conda activate agri_notebooks
           pyinstaller --onefile --add-data "bilan_hydrique_observation_horaire.ipynb:." \
                       --add-data "bilan.py:." \
