@@ -33,7 +33,7 @@ jobs:
         run: |
           conda init bash
           source ~/.bashrc
-          conda activate bilan_env
+          conda activate agri_notebooks
 
       # Step 4: Verify Conda environment
       - name: Verify Conda Environment
