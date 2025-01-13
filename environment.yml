@@ -6,12 +6,10 @@ channels:
   - defaults
 
 dependencies:
-  - jupyter
   - numpy
   - pandas
   - panel>=1
   - plotly
   - pvlib
-  - pyinstaller
   - python=3.9
   - scikit-learn>=1.2
