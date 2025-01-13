@@ -20,12 +20,6 @@ RU_PAR_CM_DE_TF = {
     'Terres sableuses': 0.7, 'Terres sablo-limoneuses': 1., 'Terres limono-sableuses': 1.55, 'Terres limoneuses': 1.8
 }
 
-# Coefficient de conversion de la RU en RFU (entre 1/2 et 2/3)
-RU_VERS_RFU_PAR_DEFAUT = 2. / 3
-
-# Fraction de la réserve utile du sol remplie d'eau (entre 0 pour une période sèche et 1 pour une période pluvieuse)
-FRACTION_REMPLIE_PAR_DEFAUT = 1.
-
 # Profondeurs d'enracinement typiques
 PROFONDEUR_ENRACINEMENT_TYPIQUE = {
     "Ail": 20.,
@@ -55,7 +49,7 @@ PROFONDEUR_ENRACINEMENT_TYPIQUE = {
 }
 
 def calcul_reserve_utile(
-    texture, fraction_cailloux, culture, fraction_remplie=FRACTION_REMPLIE_PAR_DEFAUT):
+    texture, fraction_cailloux, culture, fraction_ru_remplie):
     ''' Calcul de la RU (mm).'''
     # RU par cm de terre fine pour cette texture
     ru_par_cm_de_tf_texture = RU_PAR_CM_DE_TF[texture]
@@ -64,12 +58,11 @@ def calcul_reserve_utile(
     profondeur_enracinement = PROFONDEUR_ENRACINEMENT_TYPIQUE[culture]
     profondeur_terrefine = profondeur_enracinement * (1. - fraction_cailloux)
 
-    ru = ru_par_cm_de_tf_texture * profondeur_terrefine * fraction_remplie
+    ru = ru_par_cm_de_tf_texture * profondeur_terrefine * fraction_ru_remplie
 
-    return ru, profondeur_terrefine, profondeur_enracinement
+    return profondeur_enracinement, profondeur_terrefine, ru 
 
-def calcul_reserve_facilement_utilisable(
-    ru, ru_vers_rfu=RU_VERS_RFU_PAR_DEFAUT):
+def calcul_reserve_facilement_utilisable(ru, ru_vers_rfu):
     ''' Calcul de la RFU (mm).'''
     return ru * ru_vers_rfu
 
@@ -83,11 +76,13 @@ def calcul_etm_culture(culture, stade, df_meteo):
     return etm_culture
 
 def calcul_bilan(
+    df_meteo,
     texture, fraction_cailloux,
     culture, stade,
-    df_meteo,
-    fraction_remplie=FRACTION_REMPLIE_PAR_DEFAUT, ru_vers_rfu=RU_VERS_RFU_PAR_DEFAUT,
-    rfu_cible=None, seuil_irrigation=0., hauteur_vers_duree_irrigation=None):
+    fraction_ru_remplie, ru_vers_rfu,
+    seuil_irrigation, hauteur_vers_duree_irrigation,
+    rfu_cible=None
+):
     ''' Calcul du besoin en irrigation (mm).'''
     if isinstance(df_meteo, pd.Series):
         df = pd.Series(dtype=float)
@@ -97,7 +92,7 @@ def calcul_bilan(
     df['etp'] = -df_meteo['etp']
 
     df['profondeur_enracinement'], df['profondeur_terrefine'], df['ru'] = (
-        calcul_reserve_utile(texture, fraction_cailloux, culture, fraction_remplie))
+        calcul_reserve_utile(texture, fraction_cailloux, culture, fraction_ru_remplie))
     
     df['rfu'] = calcul_reserve_facilement_utilisable(df['ru'], ru_vers_rfu)
 
