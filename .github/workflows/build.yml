@@ -28,17 +28,24 @@ jobs:
           python-version: 3.9
           auto-update-conda: true
 
-      # Step 3: Verify Conda environment
+      # Step 3: Initialize Conda and activate environment
+      - name: Initialize Conda
+        run: |
+          conda init bash
+          source ~/.bashrc
+          conda activate bilan_env
+
+      # Step 4: Verify Conda environment
       - name: Verify Conda Environment
         run: conda info --all
 
-      # Step 4: Install additional dependencies (optional)
+      # Step 5: Install additional dependencies (optional)
       # - name: Install Extra Dependencies
       #   run: |
       #     conda activate agri_notebooks
       #     pip install some_extra_pip_package_if_needed
 
-      # Step 5: Build the executable with PyInstaller
+      # Step 6: Build the executable with PyInstaller
       - name: Build Executable
         run: |
           conda activate agri_notebooks
@@ -50,7 +57,7 @@ jobs:
                       --add-data "coefficients_culturaux_ardepi.json:." \
                       launcher.py
 
-      # Step 6: Upload the build artifact
+      # Step 7: Upload the build artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
