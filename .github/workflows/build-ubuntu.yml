@@ -53,6 +53,7 @@ jobs:
                       --add-data "geo.py:." \
                       --add-data "etp.py:." \
                       --add-data "coefficients_culturaux_ardepi.json:." \
+                      --hidden-import panel \
                       launcher.py
 
       # Step 7: Upload the build artifact
