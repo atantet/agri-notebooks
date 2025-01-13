@@ -48,6 +48,8 @@ jobs:
       # Step 6: Build the executable with PyInstaller
       - name: Build Executable
         run: |
+          conda init bash
+          source ~/.bashrc
           conda activate agri_notebooks
           pyinstaller --onefile --add-data "bilan_hydrique_observation_horaire.ipynb:." \
                       --add-data "bilan.py:." \
