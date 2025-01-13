@@ -1,0 +1,57 @@
+name: Build Executables with Conda
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Miniconda
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: agri_notebooks
+          environment-file: environment.yml
+          python-version: 3.9
+          auto-update-conda: true
+
+      # Step 3: Verify Conda environment
+      - name: Verify Conda Environment
+        run: conda info --all
+
+      # Step 4: Install additional dependencies (optional)
+      # - name: Install Extra Dependencies
+      #   run: |
+      #     conda activate agri_notebooks
+      #     pip install some_extra_pip_package_if_needed
+
+      # Step 5: Build the executable with PyInstaller
+      - name: Build Executable
+        run: |
+          conda activate agri_notebooks
+          pyinstaller --onefile --add-data "bilan_hydrique_observation_horaire.ipynb:." \
+                      --add-data "bilan.py:." \
+                      --add-data "meteofrance.py:." \
+                      --add-data "geo.py:." \
+                      --add-data "etp.py:." \
+                      --add-data "coefficients_culturaux_ardepi.json:." \
+                      launcher.py
+
+      # Step 6: Upload the build artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ runner.os }}-bilan_hydrique_app
+          path: dist/
