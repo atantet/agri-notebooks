@@ -48,6 +48,13 @@ PROFONDEUR_ENRACINEMENT_TYPIQUE = {
     "Tomate": 30.
 }
 
+# Variables météorologiques utilisées pour le bilan hydrique
+# et leur méthode d'aggrégation journalière
+VARIABLES_CALCUL_BILAN = {
+    'etp': 'sum',
+    'precipitation': 'sum'
+}
+
 def calcul_reserve_utile(
     texture, fraction_cailloux, culture, fraction_ru_remplie):
     ''' Calcul de la RU (mm).'''

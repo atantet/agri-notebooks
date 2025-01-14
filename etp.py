@@ -3,6 +3,15 @@ import pandas as pd
 from pvlib import irradiance, location
 import pytz
 
+# Variables météorologiques utilisées pour le calcul de l'ETP
+# et leur méthode d'aggrégation journalière
+VARIABLES_CALCUL_ETP = {
+    'vitesse_vent_10m': 'mean',
+    'temperature_2m': 'mean',
+    'humidite_relative': 'mean',
+    'rayonnement_global': 'sum'
+}
+
 # Chaleur latente de vaporisation de l’eau (MJ kg-1)
 LAMBDA = 2.45
 
