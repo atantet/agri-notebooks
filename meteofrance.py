@@ -144,7 +144,7 @@ DATA_DIR = Path('data')
 class Client(object):
     def __init__(self, api, application_id=None):
         self.session = requests.Session()
-        self.application_id = application_id
+        self._application_id = application_id
         if api not in AVAILABLE_APIS:
             raise ValueError(f"Choix invalide: {api}. "
                              f"Les choix possibles sont: {AVAILABLE_APIS}")
@@ -159,6 +159,16 @@ class Client(object):
         self.id_station_donnee_label = ID_STATION_DONNEE_LABEL[self.api]
         self.variables_labels = VARIABLES_LABELS[self.api]
         self.variables_conversion_unites = VARIABLES_CONVERSION_UNITES[self.api]
+
+        self.session.headers.update({'Accept': '*/*'})
+
+    @property
+    def application_id(self):
+        return self._application_id
+
+    @application_id.setter
+    def application_id(self, value):
+        self._application_id = value
         
     def request(self, method, url, **kwargs):
         # First request will always need to obtain a token first
