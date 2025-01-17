@@ -120,6 +120,8 @@ class DataStoreObservations(pn.viewable.Viewer):
             button_type='primary')
         self._sortie_donnee_liste_stations = pn.bind(
             self._recuperer_donnee_liste_stations, self._bouton_donnee_liste_stations)
+        self._sortie_montrer_dates_widgets = pn.bind(
+            self._montrer_dates_widgets, self._lecture_donnee_liste_stations_widget)
 
         # Widgets pour la donnée météo de la station de référence
         self._lecture_donnee_ref_widget = pn.widgets.Checkbox.from_param(
@@ -137,6 +139,10 @@ class DataStoreObservations(pn.viewable.Viewer):
         self.df_meteo_ref_heure_si = None
         self.s_meteo_ref_si = None
 
+        # Variables
+        self._variables_pour_calculs = None
+        self._variables_pour_calculs_sans_etp = None
+
         # Chemins
         self._filepath_donnee_liste_stations = None
 
@@ -144,6 +150,12 @@ class DataStoreObservations(pn.viewable.Viewer):
         self._client.application_id = application_id
 
         return pn.pane.Str(f"Application ID entré: {application_id}")
+
+    def _montrer_dates_widgets(self, lecture_donnee_liste_stations):
+        sortie = None
+        if lecture_donnee_liste_stations:
+            sortie = pn.Row(self._date_deb_widget, self._date_fin_widget)
+        return sortie
 
     def _recuperer_liste_stations(self, event):
         sortie = "Cliquer pour récupérer la liste des stations..."
@@ -170,7 +182,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 sortie = pn.Column(
                     msg, pn.pane.DataFrame(self.df_liste_stations.head()))
             except Exception as exc:
-                sortie = pn.pane.Str(f"Error: {exc}")
+                sortie = pn.pane.Str(f"{exc=}")
             return sortie
         else:
             return sortie
@@ -190,7 +202,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     pn.pane.Str("Stations les plus proches sélectionnées:"),
                     pn.pane.DataFrame(self.df_liste_stations_nn))
             except Exception as exc:
-                sortie = pn.pane.Str(f"Error: {exc}")
+                sortie = pn.pane.Str(f"{exc=}")
             return sortie
         else:
             return sortie
@@ -203,18 +215,18 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._filepath_donnee_liste_stations = None
             try:
                 # Variables utilisées pour le calcul de l'ETP et du bilan hydrique 
-                variables_pour_calculs = dict(
+                self._variables_pour_calculs = dict(
                     **etp.VARIABLES_CALCUL_ETP,
                     **bilan.VARIABLES_CALCUL_BILAN)
-                variables_pour_calculs_sans_etp = variables_pour_calculs.copy()
-                del variables_pour_calculs_sans_etp['etp']
+                self._variables_pour_calculs_sans_etp = self._variables_pour_calculs.copy()
+                del self._variables_pour_calculs_sans_etp['etp']
 
                 if self._lecture_donnee_liste_stations_widget.value:
                     # Lecture de la donnée météo de la liste des stations
                     self._filepath_donnee_liste_stations = meteofrance.get_filepath_donnee_periode(
                         self._client,
                         self._date_deb_widget.value, self._date_fin_widget.value,
-                        df_liste_stations=df_liste_stations_nn)
+                        df_liste_stations=self.df_liste_stations_nn)
                     self.df_meteo = pd.read_csv(
                         self._filepath_donnee_liste_stations,
                         parse_dates=[self._client.time_label],
@@ -224,7 +236,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 else:
                     # Demande de la donnée météo de la liste des stations
                     variables = [self._client.variables_labels[METEOFRANCE_FREQUENCE][k]
-                         for k in variables_pour_calculs_sans_etp]
+                         for k in self._variables_pour_calculs_sans_etp]
                     self.df_meteo = meteofrance.compiler_donnee_des_departements(
                         self._client, self.df_liste_stations_nn,
                         frequence=METEOFRANCE_FREQUENCE)[variables]
@@ -241,7 +253,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 sortie = pn.Column(
                     msg, pn.pane.DataFrame(self.df_meteo.head()))
             except Exception as exc:
-                sortie = pn.pane.Str(f"Error: {exc}")
+                sortie = pn.pane.Str(f"{exc=}")
             return sortie
         else:
             return sortie
@@ -265,7 +277,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     self._filepath_donnee_liste_stations.stem + '_' + str_ref_station_name +
                     self._filepath_donnee_liste_stations.suffix)
 
-                if self._lecture_donnee_liste_stations_widget.value:
+                if self._lecture_donnee_ref_widget.value:
                     # Lecture de la donnée météo de la station de référence
                     df_meteo_ref_heure = pd.read_csv(
                         filepath, parse_dates=[self._client.time_label],
@@ -293,10 +305,22 @@ class DataStoreObservations(pn.viewable.Viewer):
                     self._ref_station_lon_widget.value,
                     self._ref_station_altitude_widget.value)
 
+                # Calcul des valeurs journalières des variables météo
+                self.s_meteo_ref_si = pd.Series(dtype=float)
+                for variable, series in self.df_meteo_ref_heure_si.items():
+                    self.s_meteo_ref_si.loc[variable] = getattr(
+                        self.df_meteo_ref_heure_si[variable],
+                        self._variables_pour_calculs[variable])(0)
+
                 sortie = pn.Column(
-                    msg, pn.pane.DataFrame(self.df_meteo_ref_heure_si.head()))
+                    msg,
+                    "Donnée horaire à la station de référence:",
+                    pn.pane.DataFrame(self.df_meteo_ref_heure_si.head()),
+                    "Donnée journalière à la station de référence:",
+                    pn.pane.DataFrame(self.s_meteo_ref_si.head())
+                )
             except Exception as exc:
-                sortie = pn.pane.Str(f"Error: {exc}")
+                sortie = pn.pane.Str(f"{exc=}")
             return sortie
         else:
             return sortie
@@ -316,11 +340,11 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._nn_rayon_km_widget,
             self._bouton_liste_stations_nn, 
             self._sortie_liste_stations_nn,
-            "## Obtention des données météorologiques pour les stations voisines",
+            "## Obtention des données météorologiques horaires pour les stations voisines",
             pn.Row(self._bouton_donnee_liste_stations, self._lecture_donnee_liste_stations_widget),
-            pn.Row(self._date_deb_widget, self._date_fin_widget),
+            self._sortie_montrer_dates_widgets,
             self._sortie_donnee_liste_stations,
-            "## Obtention des données météorologiques pour la station de référence",
+            "## Interpolation des données météorologiques à la station de référence",
             pn.Row(self._bouton_donnee_ref, self._lecture_donnee_ref_widget),
             self._sortie_donnee_ref
         )
