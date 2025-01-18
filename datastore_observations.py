@@ -1,6 +1,7 @@
 import pandas as pd
 import param
 import panel as pn
+import traceback
 
 import bilan
 import etp
@@ -69,20 +70,27 @@ class DataStoreObservations(pn.viewable.Viewer):
     
     def __init__(self, **params):
         super().__init__(**params)
+    
+        # Initialisation d'un client pour accéder à l'API Météo-France
+        self._client = meteofrance.Client(METEOFRANCE_API)
         
         # Donnée
-        self.tab_liste_stations = pn.widgets.Tabulator(pd.DataFrame(dtype=None))
-        self.tab_liste_stations_nn = pn.widgets.Tabulator(pd.DataFrame(dtype=None))
-        self.tab_meteo = pn.widgets.Tabulator(pd.DataFrame(dtype=None))
-        self.tab_meteo_ref_heure_si = pn.widgets.Tabulator(pd.DataFrame(dtype=None))
-        self.tab_meteo_ref_si = pn.widgets.Tabulator(pd.DataFrame(dtype=None))
+        self.tab_liste_stations = pn.widgets.Tabulator(
+            pd.DataFrame(), disabled=True, pagination="local")
+        self.tab_liste_stations_nn = pn.widgets.Tabulator(
+            pd.DataFrame(), disabled=True, pagination="local")
+        self.tab_meteo = pn.widgets.Tabulator(
+            pd.DataFrame(), disabled=True, pagination="local")
+        self.tab_meteo_ref_heure_si = pn.widgets.Tabulator(
+            pd.DataFrame(), disabled=True, pagination="local",
+            layout='fit_data_table')
+        self.tab_meteo_ref_si = pn.widgets.Tabulator(
+            pd.DataFrame(), disabled=True, pagination="local",
+            layout='fit_data_table')
 
         # Variables
         self._variables_pour_calculs = None
         self._variables_pour_calculs_sans_etp = None
-    
-        # Initialisation d'un client pour accéder à l'API Météo-France
-        self._client = meteofrance.Client(METEOFRANCE_API)
 
         # Widgets pour l'Application ID
         self._application_id_widget = pn.widgets.TextInput.from_param(
@@ -172,7 +180,7 @@ class DataStoreObservations(pn.viewable.Viewer):
         sortie = "Cliquer pour récupérer la liste des stations..."
         if event:
             # Écraser la liste des stations précédente
-            self.tab_liste_stations.value = pd.DataFrame(dtype=float)
+            self.tab_liste_stations.value = pd.DataFrame()
             try:
                 filepath = meteofrance.get_filepath_liste_stations(
                     self._client)
@@ -190,14 +198,15 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Sauvegarde de la liste des stations
                     self.tab_liste_stations.value.to_csv(filepath)
                     msg = pn.pane.Str("Liste des stations téléchargée:")
+                    
                 dst_filename, bouton_telechargement = self.tab_liste_stations.download_menu(
-                    text_kwargs={'name': 'Entrer nom fichier', 'value': 'liste_stations.csv'},
+                    text_kwargs={'name': 'Entrer nom de fichier', 'value': filepath.name},
                     button_kwargs={'name': 'Télécharger la liste des stations'}
                 )
                 sortie = pn.Column(msg, self.tab_liste_stations,
                                    pn.Row(dst_filename, bouton_telechargement))
             except Exception as exc:
-                sortie = pn.pane.Str(f"{exc=}")
+                sortie = pn.pane.Str(traceback.format_exc())
             return sortie
         else:
             return sortie
@@ -220,7 +229,7 @@ class DataStoreObservations(pn.viewable.Viewer):
         sortie = "Cliquer pour sélectionner les stations les plus proches..."
         if event:
             # Écraser la liste des stations les plus proches précédente
-            self.tab_liste_stations_nn.value = pd.DataFrame(dtype=float)
+            self.tab_liste_stations_nn.value = pd.DataFrame()
             try:
                 ref_station_latlon = [self._ref_station_lat_widget.value,
                                       self._ref_station_lon_widget.value]
@@ -228,11 +237,17 @@ class DataStoreObservations(pn.viewable.Viewer):
                     self.tab_liste_stations.value, ref_station_latlon,
                     self._client.latlon_labels,
                     rayon_km=self._nn_rayon_km_widget.value)
+
+                dst_filename, bouton_telechargement = self.tab_liste_stations_nn.download_menu(
+                    text_kwargs={'name': 'Entrer nom de fichier', 'value': 'liste_stations_nn.csv'},
+                    button_kwargs={'name': 'Télécharger la liste des stations les plus proches'}
+                )
                 sortie = pn.Column(
                     pn.pane.Str("Stations les plus proches sélectionnées:"),
-                    self.tab_liste_stations_nn)
+                    self.tab_liste_stations_nn,
+                    pn.Row(dst_filename, bouton_telechargement))
             except Exception as exc:
-                sortie = pn.pane.Str(f"{exc=}")
+                sortie = pn.pane.Str(traceback.format_exc())
             return sortie
         else:
             return sortie
@@ -241,12 +256,13 @@ class DataStoreObservations(pn.viewable.Viewer):
         sortie = None
         if lecture_donnee_liste_stations:
             sortie = pn.Row(self._date_deb_widget, self._date_fin_widget)
+        return sortie
 
     def _recuperer_donnee_liste_stations(self, event):
-        sortie = "Cliquer pour récupérer les données météo de la liste des stations..."
+        sortie = "Cliquer pour récupérer les données météo pour la liste des stations..."
         if event:
             # Écraser donnee météo pour la liste des stations précédente
-            self.tab_meteo.value = pd.DataFrame(dtype=None)
+            self.tab_meteo.value = pd.DataFrame()
             self._filepath_donnee_liste_stations = None
             try:
                 # Variables utilisées pour le calcul de l'ETP et du bilan hydrique 
@@ -267,7 +283,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                         parse_dates=[self._client.time_label],
                         index_col=[self._client.id_station_donnee_label,
                                    self._client.time_label])
-                    msg = pn.pane.Str("Donnée météo de la liste des stations lue:")
+                    msg = pn.pane.Str("Donnée météo pour la liste des stations lue:")
                 else:
                     # Demande de la donnée météo de la liste des stations
                     variables = [self._client.variables_labels[METEOFRANCE_FREQUENCE][k]
@@ -284,10 +300,16 @@ class DataStoreObservations(pn.viewable.Viewer):
                         self._client, date_deb_periode, date_fin_periode,
                         df_liste_stations=self.tab_liste_stations_nn.value)
                     self.tab_meteo.value.to_csv(self._filepath_donnee_liste_stations)
-                    msg = pn.pane.Str("Donnée météo de la liste des stations téléchargée:")
-                sortie = pn.Column(msg, self.tab_meteo)
+                    msg = pn.pane.Str("Donnée météo pour la liste des stations téléchargée:")
+                dst_filename, bouton_telechargement = self.tab_meteo.download_menu(
+                    text_kwargs={'name': 'Entrer nom de fichier',
+                                 'value': self._filepath_donnee_liste_stations.name},
+                    button_kwargs={'name': 'Télécharger la donnée météo pour la liste des stations'}
+                )
+                sortie = pn.Column(msg, self.tab_meteo,
+                                   pn.Row(dst_filename, bouton_telechargement))
             except Exception as exc:
-                sortie = pn.pane.Str(f"{exc=}")
+                sortie = pn.pane.Str(traceback.format_exc())
             return sortie
         else:
             return sortie
@@ -296,8 +318,8 @@ class DataStoreObservations(pn.viewable.Viewer):
         sortie = "Cliquer pour récupérer les données météo de station de référence..."
         if event:
             # Écraser donnee météo pour la station de référence précédente
-            self.tab_meteo_ref_heure_si.value = pd.DataFrame(dtype=None)
-            self.tab_meteo_ref_si.value = pd.DataFrame(dtype=None)
+            self.tab_meteo_ref_heure_si.value = pd.DataFrame()
+            self.tab_meteo_ref_si.value = pd.DataFrame()
             try:
                 str_ref_station_name = (
                     self._ref_station_name_widget.value.lower().replace(' ', ''))
@@ -311,7 +333,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 filepath = self._filepath_donnee_liste_stations.with_name(
                     self._filepath_donnee_liste_stations.stem + '_' + str_ref_station_name +
                     self._filepath_donnee_liste_stations.suffix)
-
+            
                 if self._lecture_donnee_ref_widget.value:
                     # Lecture de la donnée météo de la station de référence
                     df_meteo_ref_heure = pd.read_csv(
@@ -327,34 +349,45 @@ class DataStoreObservations(pn.viewable.Viewer):
                     df_meteo_ref_heure.to_csv(filepath)
                     msg = pn.pane.Str("Donnée météo de la station de référence interpolée:")
 
-                df_meteo_ref_heure = meteofrance.renommer_variables(
+                df_meteo_ref_heure_renom = meteofrance.renommer_variables(
                     self._client, df_meteo_ref_heure, METEOFRANCE_FREQUENCE)
 
 
-                self.tab_meteo_ref_heure_si.value = meteofrance.convertir_unites(
-                    self._client, df_meteo_ref_heure)
+                df_meteo_ref_heure_si = meteofrance.convertir_unites(
+                    self._client, df_meteo_ref_heure_renom)
 
-                self.tab_meteo_ref_heure_si.value['etp'] = etp.calcul_etp(
-                    self.tab_meteo_ref_heure_si.value,
+                df_meteo_ref_heure_si['etp'] = etp.calcul_etp(
+                    df_meteo_ref_heure_si,
                     self._ref_station_lat_widget.value,
                     self._ref_station_lon_widget.value,
                     self._ref_station_altitude_widget.value)
 
                 # Calcul des valeurs journalières des variables météo
-                for variable, series in self.tab_meteo_ref_heure_si.value.items():
-                    self.tab_meteo_ref_si.value.loc[variable] = getattr(
-                        self.tab_meteo_ref_heure_si.value[variable],
-                        self._variables_pour_calculs[variable])(0)
+                df_meteo_ref_si = pd.DataFrame()
+                for variable, series in df_meteo_ref_heure_si.items():
+                    df_meteo_ref_si[variable] = [
+                        getattr(df_meteo_ref_heure_si[variable],
+                                self._variables_pour_calculs[variable])(0)]
+                df_meteo_ref_si.index = [(
+                    f"{df_meteo_ref_heure_si.index.min()} - "
+                    f"{df_meteo_ref_heure_si.index.max()}")]
 
+                self.tab_meteo_ref_heure_si.value = df_meteo_ref_heure_si
+                self.tab_meteo_ref_si.value = df_meteo_ref_si
+                dst_filename, bouton_telechargement = self.tab_meteo_ref_heure_si.download_menu(
+                    text_kwargs={'name': 'Entrer nom de fichier', 'value': filepath.name},
+                    button_kwargs={'name': 'Télécharger la donnée météo pour la station de référence'}
+                )
                 sortie = pn.Column(
                     msg,
                     "Donnée horaire à la station de référence:",
                     self.tab_meteo_ref_heure_si,
+                    pn.Row(dst_filename, bouton_telechargement),
                     "Donnée journalière à la station de référence:",
-                    self.tab_meteo_ref_si
+                    self.tab_meteo_ref_si.value
                 )
             except Exception as exc:
-                sortie = pn.pane.Str(f"{exc=}")
+                sortie = pn.pane.Str(traceback.format_exc())
             return sortie
         else:
             return sortie
