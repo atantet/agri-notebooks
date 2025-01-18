@@ -260,25 +260,39 @@ def get_filepath_liste_stations(client, frequence=None, id_departement=None):
 
     return filepath
 
+def get_filepath_liste_stations_nn(
+    client, ref_station_name, df_liste_stations,
+    frequence=None, id_departement=None):
+    filepath = get_filepath_liste_stations(
+        client, frequence=frequence, id_departement=id_departement)
+    str_ref_station_name = ref_station_name.lower().replace(' ', '')
+    nn_nombre = len(df_liste_stations)
+    str_nn = f"nn{nn_nombre:d}"
+    filepath_nn = filepath.with_name(
+        f"{filepath.stem}_{str_ref_station_name}_{str_nn}{filepath.suffix}")
+
+    return filepath_nn
+
 def get_filepath_donnee_periode(
-    client, date_deb_periode, date_fin_periode, frequence=None,
-    df_liste_stations=None, id_departements=None, nn_nombre=None):
+    client, ref_station_name, df_liste_stations,
+    date_deb_periode, date_fin_periode,
+    frequence=None, ref=False):
     filename = f"donnees_{client.api}"
     if frequence is not None:
         filename += f"_{frequence}"
-    if id_departements is None:
-        id_departements = liste_id_stations_vers_liste_id_departements(
-            df_liste_stations)
-    str_dep = '_'.join([str(_) for _ in id_departements])
 
-    if nn_nombre is None:
-        nn_nombre = len(df_liste_stations)
+    str_ref_station_name = ref_station_name.lower().replace(' ', '')
+    nn_nombre = len(df_liste_stations)
     str_nn = f"nn{nn_nombre:d}"
     
     str_date_deb_periode = get_str_date(date_deb_periode)
     str_date_fin_periode = get_str_date(date_fin_periode)
+
+    str_station = "ref" if ref else "stations"
     
-    filename += f"_{str_dep}_{str_nn}_{str_date_deb_periode}_{str_date_fin_periode}.csv"
+    filename += (f"_{str_ref_station_name}_{str_nn}"
+                 f"_{str_date_deb_periode}_{str_date_fin_periode}"
+                 f"_{str_station}.csv")
     parent = DATA_DIR / client.api
     parent.mkdir(parents=True, exist_ok=True)
     filepath = parent / filename
