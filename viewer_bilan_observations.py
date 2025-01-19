@@ -1,5 +1,6 @@
 import pandas as pd
 import panel as pn
+import param
 import plotly.graph_objects as go
 import numpy as np
 
@@ -24,7 +25,7 @@ DEFAUT_SEUIL_IRRIGATION = 0.1
 DEFAUT_HAUTEUR_VERS_DUREE_IRRIGATION = 10
 
 class ViewerBilanObservations(pn.viewable.Viewer):
-    df_meteo_ref_si = param.DataFrame(pd.DataFrame())
+    df_meteo_ref_si = param.DataFrame(pd.DataFrame(), allow_refs=True)
     
     def __init__(self, **params):
         super().__init__(**params)
@@ -73,14 +74,14 @@ class ViewerBilanObservations(pn.viewable.Viewer):
             self._fraction_ru_remplie_widget, self._ru_vers_rfu_widget,
             self._seuil_irrigation_widget,
             self._hauteur_vers_duree_irrigation_widget,
-            self._culture_widget, self._sortie_maj_stades_culture_choisie
+            self._culture_widget, self._stade_widget
         )
         
     def _maj_stades_culture_choisie(self, culture_choisie):
-        self.stade_widget.options = list(bilan.KC[culture_choisie])
-        self.stade_widget.value = list(bilan.KC[culture_choisie])[0]
+        self._stade_widget.options = list(bilan.KC[culture_choisie])
+        self._stade_widget.value = list(bilan.KC[culture_choisie])[0]
 
-        return self.stade_widget
+        return self._stade_widget
     
     def _creer_plot_sol(self, s, width=500, height=400):
         idx_deb = 1
@@ -121,12 +122,6 @@ class ViewerBilanObservations(pn.viewable.Viewer):
 
         return p
 
-    # Update the options of stade_widget based on culture_widget
-    def _update_stade_options(self, event):
-        selected_culture = event.new
-        self.stade_widget.options = list(bilan.KC[selected_culture])
-        self.stade_widget.value = list(bilan.KC[selected_culture])[0]  # Set to the first available stage
-
     def _creer_plots(
         self, texture, fraction_cailloux,
         fraction_ru_remplie, ru_vers_rfu,
@@ -135,7 +130,7 @@ class ViewerBilanObservations(pn.viewable.Viewer):
     ):
         # Get the data
         df_bilan = bilan.calcul_bilan(
-            self.tab_meteo_ref_si,
+            self.df_meteo_ref_si.iloc[0],
             texture, fraction_cailloux,
             culture, stade,
             fraction_ru_remplie, ru_vers_rfu,
@@ -165,6 +160,6 @@ class ViewerBilanObservations(pn.viewable.Viewer):
             pn.Row(self._seuil_irrigation_widget,
                    self._hauteur_vers_duree_irrigation_widget),
             pn.Row(self._culture_widget,
-                   self.__stade_widget),
-            self._sortie_plot_s
-        ______)_
+                   self._sortie_maj_stades_culture_choisie),
+            self._sortie_plots
+        )
