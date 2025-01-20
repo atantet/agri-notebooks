@@ -242,7 +242,8 @@ def demande(client, section, params=None, frequence=None, verify=False):
     return response
 
 def get_str_date(date):
-    return date.replace('-', '').replace(':', '')
+    return pd.Timestamp(date).isoformat().replace("+00:00", "Z").replace(
+        '-', '').replace(':', '')
 
 def liste_id_stations_vers_liste_id_departements(df_liste_stations):
     return np.unique([_ // 1000000 for _ in df_liste_stations.index])

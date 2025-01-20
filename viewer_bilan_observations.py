@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import numpy as np
 
 import bilan
+from datastore_observations import DataStoreObservations
 
 # Choix de la texture
 DEFAUT_TEXTURE = 'Terres limoneuses'
@@ -24,9 +25,10 @@ DEFAUT_SEUIL_IRRIGATION = 0.1
 # Conversion de hauteur (mm) vers durée d'irrigation (min)
 DEFAUT_HAUTEUR_VERS_DUREE_IRRIGATION = 10
 
-class ViewerBilanObservations(pn.viewable.Viewer):
-    df_meteo_ref_si = param.DataFrame(pd.DataFrame(), allow_refs=True)
-    
+class View(pn.viewable.Viewer):
+    datastore = param.ClassSelector(class_=DataStoreObservations)
+
+class ViewerBilanObservations(View):    
     def __init__(self, **params):
         super().__init__(**params)
 
@@ -69,7 +71,7 @@ class ViewerBilanObservations(pn.viewable.Viewer):
 
         # Liaison du plot au widgets
         self._sortie_plots = pn.bind(
-            self._creer_plots,
+            self._creer_plots, self.datastore.tab_meteo_ref_si,
             self._texture_widget, self._fraction_cailloux_widget,
             self._fraction_ru_remplie_widget, self._ru_vers_rfu_widget,
             self._seuil_irrigation_widget,
@@ -123,43 +125,59 @@ class ViewerBilanObservations(pn.viewable.Viewer):
         return p
 
     def _creer_plots(
-        self, texture, fraction_cailloux,
+        self, df, texture, fraction_cailloux,
         fraction_ru_remplie, ru_vers_rfu,
         seuil_irrigation, hauteur_vers_duree_irrigation,
         culture, stade
     ):
-        # Get the data
-        df_bilan = bilan.calcul_bilan(
-            self.df_meteo_ref_si.iloc[0],
-            texture, fraction_cailloux,
-            culture, stade,
-            fraction_ru_remplie, ru_vers_rfu,
-            seuil_irrigation=seuil_irrigation,
-            hauteur_vers_duree_irrigation=hauteur_vers_duree_irrigation)  
+        guide = pn.pane.Str(
+            "Récupérérer la donnée météo de la station de référence "
+            "pour pouvoir exécuter le bilan hydrique...")
+        sortie = guide
+        if len(df) > 0:
+            sortie = pn.Column(
+                pn.Row(self._texture_widget,
+                       self._fraction_cailloux_widget),
+                pn.Row(self._fraction_ru_remplie_widget,
+                       self._ru_vers_rfu_widget),
+                pn.Row(self._seuil_irrigation_widget,
+                       self._hauteur_vers_duree_irrigation_widget),
+                pn.Row(self._culture_widget,
+                       self._sortie_maj_stades_culture_choisie)
+            )
+            
+            # Get the data
+            df_bilan = bilan.calcul_bilan(
+                df.iloc[0],
+                texture, fraction_cailloux,
+                culture, stade,
+                fraction_ru_remplie, ru_vers_rfu,
+                seuil_irrigation=seuil_irrigation,
+                hauteur_vers_duree_irrigation=hauteur_vers_duree_irrigation)  
 
-        plot_sol = self._creer_plot_sol(df_bilan)
-        plot_besoin = self._creer_plot_besoin(df_bilan)
-        plot_titre = pn.pane.Markdown(
-            f"## Pour {culture.lower()} au stade {stade.lower()}")
+            plot_sol = self._creer_plot_sol(df_bilan)
+            plot_besoin = self._creer_plot_besoin(df_bilan)
+            plot_titre = pn.pane.Markdown(
+                f"### Pour {culture.lower()} au stade {stade.lower()}")
 
-        p = pn.Column(plot_titre, pn.Row(plot_sol, plot_besoin))
+            sortie = pn.Column(
+                sortie,
+                plot_titre,
+                pn.Row(plot_sol, plot_besoin)
+            )
     
-        if df_bilan['irrigation']:
-            plot_irrigation = pn.pane.Markdown(
-                f"### Besoin d'arroser {df_bilan['duree_irrigation']:.0f} min")
-            p = pn.Column(p, plot_irrigation)
+            if df_bilan['irrigation']:
+                plot_irrigation = pn.pane.Markdown(
+                    f"### Besoin d'arroser {df_bilan['duree_irrigation']:.0f} min")
+                sortie = pn.Column(
+                    sortie,
+                    plot_irrigation
+                )
     
-        return p
+        return sortie
         
     def __panel__(self):
         return pn.Column(
-            pn.Row(self._texture_widget,
-                   self._fraction_cailloux_widget),
-            pn.Row(self._fraction_ru_remplie_widget,
-                   self._ru_vers_rfu_widget),
-            pn.Row(self._seuil_irrigation_widget,
-                   self._hauteur_vers_duree_irrigation_widget),
-            pn.Row(self._culture_widget,
-                   self._sortie_maj_stades_culture_choisie),
+            pn.pane.Markdown("## Exécution du bilan hydrique"),
             self._sortie_plots
         )
