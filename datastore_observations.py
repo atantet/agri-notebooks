@@ -297,8 +297,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             titre,
             guide
         )
-        if ((len(df_liste_stations_nn) > 0) and
-            lire_donnee_ref and (len(df_meteo) == 0)):
+        if len(df_liste_stations_nn) > 0:
             sortie = pn.Column(
                 titre,
                 self._periode_widget

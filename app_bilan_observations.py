@@ -1,3 +1,8 @@
+# TODO
+# Dernières 24h checkbox
+# disable
+# Réinitialiser bouton
+# Layout/Template
 import panel as pn
 import param
 from datastore_observations import DataStoreObservations
