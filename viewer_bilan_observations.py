@@ -2,6 +2,7 @@ import pandas as pd
 import panel as pn
 import param
 import plotly.graph_objects as go
+from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
 import numpy as np
 
@@ -50,10 +51,11 @@ class ViewerMeteoObservations(View):
         panels_variables=DEFAULT_PANELS_VARIABLES,
         width=1200, height=400
     ):
-        nrows = len(panels_variables)
-        ncols = len(panels_variables[0])
-        specs = [[{"secondary_y": True}] * ncols] * nrows
-        fig = make_subplots(rows=nrows, cols=ncols, specs=specs)
+        rows = len(panels_variables)
+        cols = len(panels_variables[0])
+        axes = 2
+        specs = [[{"secondary_y": True}] * cols] * rows
+        fig = make_subplots(rows=rows, cols=cols, specs=specs)
 
         for irow, panels_variables_row in enumerate(panels_variables):
             for icol, panels_variables_row_col in enumerate(panels_variables_row):
@@ -61,11 +63,15 @@ class ViewerMeteoObservations(View):
                     name = f"{variable} [{meteofrance.UNITES[variable]}]"
                     row = irow + 1
                     col = icol + 1
+                    k = ((irow * cols) + icol) * axes + axis
                     secondary_y = bool(axis)
-                    fig.add_trace(go.Scatter(x=df.index, y=df[variable]),
-                                  row=row, col=col, secondary_y=secondary_y)
+                    params = dict(row=row, col=col, secondary_y=secondary_y)
+                    color = DEFAULT_PLOTLY_COLORS[k % len(DEFAULT_PLOTLY_COLORS)]
+                    fig.add_trace(
+                        go.Scatter(x=df.index, y=df[variable], line_color=color),
+                        **params)
                     fig.update_yaxes(
-                        title_text=name, row=row, col=col, secondary_y=secondary_y)
+                        title_text=name, color=color, **params)
         
         fig.update_layout(showlegend=False, width=width, height=height)
     
