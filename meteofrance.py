@@ -129,6 +129,7 @@ VARIABLES_LABELS = {
 }
 VARIABLES_LABELS['DPPaquetObs'] = VARIABLES_LABELS['DPObs']
 
+# Unités des variables météorologiques
 UNITES = {
     'rayonnement_global': 'J m-2 jour-1',
     'temperature_2m': 'K',
@@ -137,6 +138,9 @@ UNITES = {
     'precipitation': 'mm jour-1',
     'etp': 'mm jour-1'
 }
+
+# Fuseau horaire
+TZ = 'UTC'
 
 # Dossier des données
 DATA_DIR = Path('data')
@@ -444,10 +448,10 @@ def inserer_noms_stations(client, df, df_liste_stations):
                            for _ in id_stations_df]
     df.insert(0, client.station_name_label, liste_noms_stations)
     
-def localisation_temps(df, tz='UTC'):
+def localisation_temps(df, tz=TZ):
     ''' Localisation UTC de l'indice temporel.'''
     index = [df.index.levels[0],
-             pd.DatetimeIndex(df.index.levels[1], tz='UTC')]
+             pd.DatetimeIndex(df.index.levels[1], tz=TZ)]
     df.index = df.index.set_levels(index)
 
 def convertir_unites(client, df):

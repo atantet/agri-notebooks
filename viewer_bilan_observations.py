@@ -89,7 +89,7 @@ class ViewerMeteoObservations(View):
 
     def __panel__(self):
         return pn.Column(
-            pn.pane.Markdown("## Météo des dernières 24h"),
+            pn.pane.Markdown("## Météo des dernières 24 h"),
             self._sortie_plots
         )
         

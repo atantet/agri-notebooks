@@ -52,11 +52,14 @@ class DataStoreObservations(pn.viewable.Viewer):
         default=False,
         doc="""Cliquer pour lire la donnée météo pour la liste des stations au lieu de la télécharger..."""
     )
-    periode = param.DateRange(
-        doc="""Entrer la période UTC de la donnée météo (YYYY-mm-dd HH:MM:SS)..."""
+    date_deb = param.Date(
+        doc="""Date UTC de début de la période météo de 24 h (calculée à partir de la date de fin)"""
+    )
+    date_fin = param.Date(
+        doc="""Entrer la date UTC de fin de la période météo de 24 h (YYYY-mm-dd HH:MM:SS)..."""
     )
     lire_dernieres24h = param.Boolean(
-        doc="""Cliquer pour lire les dernières 24h de donnée météo..."""
+        doc="""Cliquer pour récupérer les dernières 24 h de donnée météo..."""
     )
     lire_donnee_ref = param.Boolean(
         default=False,
@@ -66,6 +69,11 @@ class DataStoreObservations(pn.viewable.Viewer):
     def __init__(self, **params):
         super().__init__(**params)
     
+        if "date_deb" in params:
+            raise ValueError("Le paramètre 'date_deb' ne peut pas être changé, "
+                             "car la date de début est calculée à partir de la date de fin "
+                             "pour définir une période météo de 24 h.") 
+            
         # Initialisation d'un client pour accéder à l'API Météo-France
         self._client = meteofrance.Client(METEOFRANCE_API)
         
@@ -138,19 +146,27 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._montrer_donnee_liste_stations_widgets, self.tab_liste_stations_nn)
 
         # Widgets pour la donnée météo pour la liste des stations
-        name = "Période UTC de la donnée météo (YYYY-mm-dd HH:MM:SS)"
-        self._periode_widget = pn.widgets.DatetimeRangeInput.from_param(
-            self.param.periode, name=name, start=None, end=None)
+        self._date_deb_widget = pn.widgets.DatetimePicker.from_param(
+            self.param.date_deb, disabled=True,
+            name="Date UTC de début de période météo de 24 h (calculée à partir de la date de fin)")
+        self._date_fin_widget = pn.widgets.DatetimePicker.from_param(
+            self.param.date_fin,
+            name="Date UTC de fin de période météo de 24 h (YYYY-mm-dd HH:MM:SS)")
+        
         self._lire_dernieres24h_widget = pn.widgets.Checkbox.from_param(
             self.param.lire_dernieres24h,
-            name="Lire les dernières 24h")
+            name="Récupérer les dernières 24 h")
         self._bouton_donnee_liste_stations = pn.widgets.Button(
             name='Cliquer pour récupérer la donnée météo pour la liste des stations',
             button_type='primary')
         self._sortie_donnee_liste_stations = pn.bind(
             self._recuperer_donnee_liste_stations, self._bouton_donnee_liste_stations)
-        self._sortie_montrer_dates_widgets = pn.bind(
-            self._montrer_dates_widgets,
+        self._sortie_date_deb = pn.bind(
+            self._montrer_date_deb_widget, self._date_fin_widget)
+        self._sortie_dates = pn.bind(
+            self._montrer_dates_widgets, self._lire_dernieres24h_widget)
+        self._sortie_choix_periode = pn.bind(
+            self._montrer_choix_periode_widgets,
             self.tab_liste_stations_nn,
             self._lire_donnee_liste_stations_widget, self._lire_donnee_ref_widget)
 
@@ -292,33 +308,54 @@ class DataStoreObservations(pn.viewable.Viewer):
         else:
             return sortie
 
-    def _montrer_dates_widgets(
+    def _montrer_date_deb_widget(self, date_fin):
+        if date_fin is not None:
+            self._date_deb_widget.value = date_fin - pd.Timedelta(hours=23)
+    
+        return self._date_deb_widget
+
+    def _montrer_dates_widgets(self, lire_dernieres24h):
+        self._date_fin_widget.disabled = lire_dernieres24h
+        if lire_dernieres24h:
+            self._date_fin_widget.value = pd.Timestamp.now(
+                tz=meteofrance.TZ).replace(minute=0, second=0, microsecond=0)
+
+        return pn.Column(
+            self._sortie_date_deb,
+            self._date_fin_widget
+        )
+
+    def _montrer_choix_periode_widgets(
         self, df_liste_stations_nn,
         lire_donnee_liste_stations, lire_donnee_ref
     ):
         titre = pn.pane.Markdown(
             "## Définition de la période météo (stations et référence)")
-        guide = pn.pane.Str(
-                "Pas besoin de définir la période météo lorsque "
-                "les données ne sont sont pas lues. Continuer...")
-        sortie = pn.Column(
+        sortie_base = pn.Column(
             titre,
-            guide
+            self._lire_dernieres24h_widget
         )
+        sortie = sortie_base
         if (lire_donnee_liste_stations or lire_donnee_ref):
+            self._lire_dernieres24h_widget.value = False
+            self._lire_dernieres24h_widget.disabled = False
+            
             guide = pn.pane.Str(
                 "Récupérer la liste des stations les plus proches pour "
-                "pouvoir les interpoler à la station de référence...")
+                "pouvoir définir la période de la donnée météo à lire...")
             sortie = pn.Column(
                 titre,
                 guide
             )
             if len(df_liste_stations_nn) > 0:
                 sortie = pn.Column(
-                    titre,
-                    self._periode_widget,
-                    self._lire_dernieres24h_widget
+                    sortie_base,
+                    self._sortie_dates,
                 )
+        else:
+            self._lire_dernieres24h_widget.value = True
+            self._lire_dernieres24h_widget.disabled = True
+            
         return sortie
 
     def _montrer_donnee_liste_stations_widgets(self, df_liste_stations_nn):
@@ -327,7 +364,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             "pour les stations voisines")
         guide = pn.pane.Str(
             "Récupérer la liste des stations les plus proches pour "
-            "pouvoir les interpoler à la station de référence...")
+            "pouvoir récupérer leur donnée météo...")
         sortie = pn.Column(
             titre,
             guide
@@ -346,18 +383,18 @@ class DataStoreObservations(pn.viewable.Viewer):
             # Écraser donnee météo pour la liste des stations précédente
             self.tab_meteo.value = pd.DataFrame()
             try:
+                filepath = meteofrance.get_filepath_donnee_periode(
+                    self._client, self.ref_station_name, self.tab_liste_stations_nn.value,
+                    self._date_deb_widget.value, self._date_fin_widget.value)
                 if self._lire_donnee_liste_stations_widget.value:
                     # Lecture de la donnée météo pour la liste des stations
-                    filepath = meteofrance.get_filepath_donnee_periode(
-                        self._client, self.ref_station_name, self.tab_liste_stations_nn.value,
-                        *self._periode_widget.value)
                     self.tab_meteo.value = pd.read_csv(
                         filepath, parse_dates=[self._client.time_label],
                         index_col=[self._client.id_station_donnee_label,
                                    self._client.time_label])
                     msg = pn.pane.Markdown("Donnée météo pour la liste des stations lue:")
                 else:
-                    # Demande de la donnée météo pour la liste des stations pour les dernières 24h
+                    # Demande de la donnée météo pour la liste des stations pour les dernières 24 h
                     variables = [self._client.variables_labels[METEOFRANCE_FREQUENCE][k]
                          for k in VARIABLES_POUR_CALCULS_SANS_ETP]
                     self.tab_meteo.value = meteofrance.compiler_donnee_des_departements(
@@ -365,11 +402,6 @@ class DataStoreObservations(pn.viewable.Viewer):
                         frequence=METEOFRANCE_FREQUENCE)[variables]
     
                     # Sauvegarde de la donnée météo pour la liste des stations
-                    time = self.tab_meteo.value.index.to_frame()[self._client.time_label]
-                    self._periode_widget.value = (time.min(), time.max())
-                    filepath = meteofrance.get_filepath_donnee_periode(
-                        self._client, self.ref_station_name, self.tab_liste_stations_nn.value,
-                        *self._periode_widget.value)
                     self.tab_meteo.value.to_csv(filepath)
                     msg = pn.pane.Markdown("Donnée météo pour la liste des stations téléchargée:")
                 dst_filename, bouton_telechargement = self.tab_meteo.download_menu(
@@ -388,8 +420,10 @@ class DataStoreObservations(pn.viewable.Viewer):
         else:
             return sortie
 
-    def _montrer_donnee_ref_widgets(self, df_meteo, df_liste_stations_nn,
-                                    lire_donnee_ref):
+    def _montrer_donnee_ref_widgets(
+        self, df_meteo, df_liste_stations_nn,
+        lire_donnee_ref
+    ):
         titre = pn.pane.Markdown(
             "## Interpolation des données météorologiques "
             "à la station de référence")
@@ -408,7 +442,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 self._sortie_donnee_ref
             )
             
-        return sortie    
+        return sortie  
 
     def _recuperer_donnee_ref(self, event):
         sortie = None
@@ -416,13 +450,10 @@ class DataStoreObservations(pn.viewable.Viewer):
             # Écraser donnee météo pour la station de référence précédente
             self.tab_meteo_ref_heure_si.value = pd.DataFrame()
             self.tab_meteo_ref_si.value = pd.DataFrame()
-            try:
-                if None in self._periode_widget.value:
-                    time = self.tab_meteo.value.index.to_frame()[self._client.time_label]
-                    self._periode_widget.value = (time.min(), time.max())   
+            try: 
                 filepath = meteofrance.get_filepath_donnee_periode(
                     self._client, self.ref_station_name, self.tab_liste_stations_nn.value,
-                    *self._periode_widget.value, ref=True)
+                    self._date_deb_widget.value, self._date_fin_widget.value, ref=True)
                 if self._lire_donnee_ref_widget.value:
                     # Lecture de la donnée météo pour la station de référence
                     df_meteo_ref_heure = pd.read_csv(
@@ -488,7 +519,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._sortie_application_id,
             self._sortie_recuperer_liste_stations,
             self._sortie_selectionner_plus_proches_voisins,
-            self._sortie_montrer_dates_widgets,
+            self._sortie_choix_periode,
             self._sortie_recuperer_donnee_liste_stations,
             self._sortie_recuperer_donnee_ref
         )

@@ -21,7 +21,7 @@ class AppBilanObservations(pn.viewable.Viewer):
 
     def __panel__(self):
         titre = pn.pane.Markdown(
-            "# Bilan hydrique à partir des dernières 24h "
+            "# Bilan hydrique à partir des dernières 24 h "
             "d'observations Météo-France")
         return pn.Column(titre, self.datastore, self.view_meteo, self.view_bilan)
 
@@ -46,7 +46,7 @@ params = dict(
     ref_station_lat=REF_STATION_LAT,
     ref_station_lon=REF_STATION_LON,
     nn_rayon_km=NN_RAYON_KM,
-    periode=PERIODE)
+    date_fin=PERIODE[1])
     
 datastore = DataStoreObservations(**params)
 view_meteo = ViewerMeteoObservations(datastore=datastore)
