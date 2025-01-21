@@ -33,15 +33,15 @@ class DataStoreObservations(pn.viewable.Viewer):
         doc="""Entrer le nom de la station de référence et cliquer ENTER..."""
     )
     ref_station_altitude = param.Number(
-        bounds=(0., None),
+        bounds=(0., None), default=None,
         doc="""Entrer l'altitude de la station de référence..."""
     )
     ref_station_lat = param.Number(
-        bounds=(-90, 90.),
+        bounds=(-90, 90.), default=None,
         doc="""Entrer la latitude de la station de référence..."""
     )
     ref_station_lon = param.Number(
-        bounds=(-180., 180.),
+        bounds=(-180., 180.), default=None,
         doc="""Entrer la longitude de la station de référence..."""
     )
     nn_rayon_km = param.Number(
@@ -136,10 +136,17 @@ class DataStoreObservations(pn.viewable.Viewer):
         # Widgets pour les plus proches voisins
         self._nn_rayon_km_widget = pn.widgets.EditableFloatSlider.from_param(
             self.param.nn_rayon_km,
-            name="Distance maximale des stations à la référence")
+            name="Distance maximale des stations à la référence (> 0)")
         self._bouton_liste_stations_nn = pn.widgets.Button(
             name='Cliquer pour sélectionner les stations les plus proches',
             button_type='primary')
+        self._sortie_bouton_liste_stations_nn = pn.bind(
+            self._montrer_bouton_liste_stations_nn,
+            self._ref_station_name_widget,
+            self._ref_station_altitude_widget,
+            self._ref_station_lat_widget,
+            self._ref_station_lon_widget,
+            self._nn_rayon_km_widget)
         self._sortie_liste_stations_nn = pn.bind(
             self._selectionner_plus_proches_voisins, self._bouton_liste_stations_nn)
         self._sortie_recuperer_donnee_liste_stations = pn.bind(
@@ -237,7 +244,10 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Sauvegarde de la liste des stations
                     self.tab_liste_stations.value.to_csv(filepath)
                     msg = pn.pane.Markdown("Liste des stations téléchargée:")
-                    
+
+                assert len(self.tab_liste_stations.value) != 0, (
+                    "La table de la liste des stations est vide!")
+                
                 dst_filename, bouton_telechargement = self.tab_liste_stations.download_menu(
                     text_kwargs={'name': 'Entrer nom de fichier', 'value': filepath.name},
                     button_kwargs={'name': 'Télécharger la liste des stations'}
@@ -252,6 +262,21 @@ class DataStoreObservations(pn.viewable.Viewer):
             return sortie
         else:
             return sortie
+
+    def _montrer_bouton_liste_stations_nn(
+        self, ref_station_name, ref_station_altitude,
+        ref_station_lat, ref_station_lon, nn_rayon_km
+    ):
+        self._bouton_liste_stations_nn.disabled = False
+        if (
+            (ref_station_name is None) or
+            (ref_station_altitude is None) or
+            (ref_station_lat is None) or
+            (ref_station_lon is None) or
+            (nn_rayon_km is None)
+        ):
+            self._bouton_liste_stations_nn.disabled = True
+        return self._bouton_liste_stations_nn
 
     def _montrer_plus_proches_voisins_widgets(self, df_liste_stations):
         titre = pn.pane.Markdown(
@@ -272,7 +297,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 pn.Row(self._ref_station_lat_widget, self._ref_station_lon_widget),
                 pn.pane.Markdown("### Sélection des stations plus proches"),
                 self._nn_rayon_km_widget,
-                self._bouton_liste_stations_nn,
+                self._sortie_bouton_liste_stations_nn,
                 self._sortie_liste_stations_nn
             )
         return sortie        
@@ -289,6 +314,9 @@ class DataStoreObservations(pn.viewable.Viewer):
                     self.tab_liste_stations.value, ref_station_latlon,
                     self._client.latlon_labels,
                     rayon_km=self._nn_rayon_km_widget.value)
+
+                assert len(self.tab_liste_stations_nn.value) != 0, (
+                    "La table de la liste des stations les plus proches est vide!")
 
                 filepath = meteofrance.get_filepath_liste_stations_nn(
                     self._client, self.ref_station_name, self.tab_liste_stations_nn.value)
@@ -404,6 +432,10 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Sauvegarde de la donnée météo pour la liste des stations
                     self.tab_meteo.value.to_csv(filepath)
                     msg = pn.pane.Markdown("Donnée météo pour la liste des stations téléchargée:")
+
+                assert len(self.tab_meteo.value) != 0, (
+                    "La table de la donnée météo pour la liste des stations est vide!")
+                    
                 dst_filename, bouton_telechargement = self.tab_meteo.download_menu(
                     text_kwargs={'name': 'Entrer nom de fichier',
                                  'value': filepath.name},
@@ -494,6 +526,10 @@ class DataStoreObservations(pn.viewable.Viewer):
 
                 self.tab_meteo_ref_heure_si.value = df_meteo_ref_heure_si
                 self.tab_meteo_ref_si.value = df_meteo_ref_si
+
+                assert len(self.tab_meteo_ref_si.value) != 0, (
+                    "La table de la donnée météo pour la station de référence est vide!")
+                
                 dst_filename, bouton_telechargement = self.tab_meteo_ref_heure_si.download_menu(
                     text_kwargs={'name': 'Entrer nom de fichier', 'value': filepath.name},
                     button_kwargs={'name': 'Télécharger la donnée météo pour la station de référence'}

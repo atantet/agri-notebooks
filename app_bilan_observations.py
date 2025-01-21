@@ -1,12 +1,11 @@
 # TODO
-# Dernières 24h checkbox
 # disable
 # Réinitialiser bouton
 # Layout/Template
 import pandas as pd
 import panel as pn
 import param
-pn.extension('plotly')
+pn.extension('plotly', 'tabulator')
 
 from datastore_observations import DataStoreObservations
 from viewer_bilan_observations import ViewerMeteoObservations, ViewerBilanObservations
@@ -37,18 +36,20 @@ PERIODE = (pd.Timestamp("2025-01-17T07:00:00Z"),
 
 
 params = dict(
-    lire_liste_stations=True,
-    lire_donnee_liste_stations=True,
-    lire_donnee_ref=True,
+    # lire_liste_stations=True,
+    # lire_donnee_liste_stations=True,
+    # lire_donnee_ref=True,
     application_id=APPLICATION_ID,
     ref_station_name=REF_STATION_NAME,
     ref_station_altitude=REF_STATION_ALTITUDE,
     ref_station_lat=REF_STATION_LAT,
     ref_station_lon=REF_STATION_LON,
     nn_rayon_km=NN_RAYON_KM,
-    date_fin=PERIODE[1])
+    # date_fin=PERIODE[1]
+)
     
 datastore = DataStoreObservations(**params)
+# datastore = DataStoreObservations()
 view_meteo = ViewerMeteoObservations(datastore=datastore)
 view_bilan = ViewerBilanObservations(datastore=datastore)
 AppBilanObservations(
