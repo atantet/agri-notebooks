@@ -1,5 +1,5 @@
 # TODO
-# disable
+# temporisation
 # Réinitialiser bouton
 # Layout/Template
 import pandas as pd
@@ -31,12 +31,12 @@ REF_STATION_ALTITUDE = 50.
 REF_STATION_LAT = 48.541356
 REF_STATION_LON = -1.615400
 NN_RAYON_KM = 35.
-PERIODE = (pd.Timestamp("2025-01-17T07:00:00Z"),
-           pd.Timestamp("2025-01-18T06:00:00Z"))
+PERIODE = (pd.Timestamp("2025-01-19T21:00:00Z"),
+           pd.Timestamp("2025-01-20T20:00:00Z"))
 
 
 params = dict(
-    # lire_liste_stations=True,
+    lire_liste_stations=True,
     # lire_donnee_liste_stations=True,
     # lire_donnee_ref=True,
     application_id=APPLICATION_ID,
@@ -45,7 +45,7 @@ params = dict(
     ref_station_lat=REF_STATION_LAT,
     ref_station_lon=REF_STATION_LON,
     nn_rayon_km=NN_RAYON_KM,
-    # date_fin=PERIODE[1]
+    date_fin=PERIODE[1]
 )
     
 datastore = DataStoreObservations(**params)

@@ -245,10 +245,6 @@ def demande(client, section, params=None, frequence=None, verify=False):
 
     return response
 
-def get_str_date(date):
-    return pd.Timestamp(date).isoformat().replace("+00:00", "Z").replace(
-        '-', '').replace(':', '')
-
 def liste_id_stations_vers_liste_id_departements(df_liste_stations):
     return np.unique([_ // 1000000 for _ in df_liste_stations.index])
 
@@ -447,6 +443,15 @@ def inserer_noms_stations(client, df, df_liste_stations):
     liste_noms_stations = [df_liste_stations.loc[_, client.station_name_label]
                            for _ in id_stations_df]
     df.insert(0, client.station_name_label, liste_noms_stations)
+
+def get_str_date(date):
+    try:
+        s_date = pd.Timestamp(date, tz=TZ).isoformat().replace(
+        "+00:00", "Z").replace('-', '').replace(':', '')
+    except ValueError:
+        s_date = pd.Timestamp(date).isoformat().replace(
+        "+00:00", "Z").replace('-', '').replace(':', '')
+    return s_date
     
 def localisation_temps(df, tz=TZ):
     ''' Localisation UTC de l'indice temporel.'''
