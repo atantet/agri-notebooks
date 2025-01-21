@@ -2,9 +2,11 @@ import pandas as pd
 import panel as pn
 import param
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import numpy as np
 
 import bilan
+import meteofrance
 from datastore_observations import DataStoreObservations
 
 # Choix de la texture
@@ -25,8 +27,66 @@ DEFAUT_SEUIL_IRRIGATION = 0.1
 # Conversion de hauteur (mm) vers durée d'irrigation (min)
 DEFAUT_HAUTEUR_VERS_DUREE_IRRIGATION = 10
 
+# Distribution des variables par panel pour le subplot de la météo
+DEFAULT_PANELS_VARIABLES = [[
+            ['temperature_2m', 'humidite_relative'],
+            ['rayonnement_global', 'vitesse_vent_10m'],
+            ['precipitation', 'etp']
+        ]]
+
 class View(pn.viewable.Viewer):
     datastore = param.ClassSelector(class_=DataStoreObservations)
+
+class ViewerMeteoObservations(View):
+    def __init__(self, **params):
+        super().__init__(**params)
+
+        self._sortie_plots = pn.bind(
+            self._creer_plots,
+            self.datastore.tab_meteo_ref_heure_si)
+
+    def _creer_plot_meteo(
+        self, df,
+        panels_variables=DEFAULT_PANELS_VARIABLES,
+        width=1200, height=400
+    ):
+        nrows = len(panels_variables)
+        ncols = len(panels_variables[0])
+        specs = [[{"secondary_y": True}] * ncols] * nrows
+        fig = make_subplots(rows=nrows, cols=ncols, specs=specs)
+
+        for irow, panels_variables_row in enumerate(panels_variables):
+            for icol, panels_variables_row_col in enumerate(panels_variables_row):
+                for axis, variable in enumerate(panels_variables_row_col):
+                    name = f"{variable} [{meteofrance.UNITES[variable]}]"
+                    row = irow + 1
+                    col = icol + 1
+                    secondary_y = bool(axis)
+                    fig.add_trace(go.Scatter(x=df.index, y=df[variable]),
+                                  row=row, col=col, secondary_y=secondary_y)
+                    fig.update_yaxes(
+                        title_text=name, row=row, col=col, secondary_y=secondary_y)
+        
+        fig.update_layout(showlegend=False, width=width, height=height)
+    
+        return pn.pane.Plotly(fig)
+
+    def _creer_plots(self, df):
+        guide = pn.pane.Str(
+            "Récupérérer la donnée météo de la station de référence "
+            "pour pouvoir représenter sa météo...")
+        sortie = guide
+        if len(df) > 0:
+            sortie = self._creer_plot_meteo(df)
+    
+        return sortie
+
+    def __panel__(self):
+        return pn.Column(
+            pn.pane.Markdown("## Météo des dernières 24h"),
+            self._sortie_plots
+        )
+        
 
 class ViewerBilanObservations(View):    
     def __init__(self, **params):
@@ -101,9 +161,8 @@ class ViewerBilanObservations(View):
             width=width,
             height=height
         )
-        p = pn.pane.Plotly(fig)
     
-        return p
+        return pn.pane.Plotly(fig)
 
     def _creer_plot_besoin(self, s, width=500, height=400):
         idx_deb = 4
@@ -120,9 +179,8 @@ class ViewerBilanObservations(View):
             width=width,
             height=height
         )
-        p = pn.pane.Plotly(fig)
 
-        return p
+        return pn.pane.Plotly(fig)
 
     def _creer_plots(
         self, df, texture, fraction_cailloux,
