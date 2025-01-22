@@ -2,6 +2,7 @@
 data/*
 doc/*
 .~lock.*
+*.layout
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
