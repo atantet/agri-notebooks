@@ -1,7 +1,7 @@
 # TODO
-# temporisation
-# Réinitialiser bouton
-# Layout/Template
+# temporisation
+# Réinitialiser bouton
+# Layout/Template
 import pandas as pd
 import panel as pn
 import param
@@ -15,14 +15,28 @@ class AppBilanObservations(pn.viewable.Viewer):
     view_meteo = param.ClassSelector(class_=ViewerMeteoObservations)
     view_bilan = param.ClassSelector(class_=ViewerBilanObservations)
 
+    titre = param.String(default=(
+        "Bilan hydrique à partir des dernières 24 h "
+        "d'observations Météo-France"))
+    sidebar_width = param.Integer(default=500)
+
     def __init__(self, **params):
         super().__init__(**params)
+        
+        self._template = pn.template.MaterialTemplate(
+            title=self.titre, sidebar_width=self.sidebar_width)
+        self._template.sidebar.append(self.datastore)
+        self._template.main.append(self.view_meteo)
+        self._template.main.append(self.view_bilan)
+
+    def servable(self):
+        if pn.state.served:
+            return self._template.servable()
+        return self
 
     def __panel__(self):
-        titre = pn.pane.Markdown(
-            "# Bilan hydrique à partir des dernières 24 h "
-            "d'observations Météo-France")
-        return pn.Column(titre, self.datastore, self.view_meteo, self.view_bilan)
+
+        return pn.Column(self.datastore, self.view_meteo, self.view_bilan)
 
 
 APPLICATION_ID = 'ZlFGb1VCNzdlQ3c5QmhSMU1IbE8xQTluOE0wYTpUS3l1YkcweGJmSTJrQlJVaGNiSkNHTXczdHNh'
@@ -37,8 +51,8 @@ PERIODE = (pd.Timestamp("2025-01-19T21:00:00Z"),
 
 params = dict(
     lire_liste_stations=True,
-    # lire_donnee_liste_stations=True,
-    # lire_donnee_ref=True,
+    lire_donnee_liste_stations=True,
+    lire_donnee_ref=True,
     application_id=APPLICATION_ID,
     ref_station_name=REF_STATION_NAME,
     ref_station_altitude=REF_STATION_ALTITUDE,
@@ -49,7 +63,7 @@ params = dict(
 )
     
 datastore = DataStoreObservations(**params)
-# datastore = DataStoreObservations()
+# datastore = DataStoreObservations()
 view_meteo = ViewerMeteoObservations(datastore=datastore)
 view_bilan = ViewerBilanObservations(datastore=datastore)
 AppBilanObservations(

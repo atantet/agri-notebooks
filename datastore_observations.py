@@ -21,6 +21,9 @@ VARIABLES_POUR_CALCULS = dict(
 VARIABLES_POUR_CALCULS_SANS_ETP = VARIABLES_POUR_CALCULS.copy()
 del VARIABLES_POUR_CALCULS_SANS_ETP['etp']
 
+LARGEUR_BOUTONS = 450
+ALERT_TYPE = "success"
+
 class DataStoreObservations(pn.viewable.Viewer):
     application_id = param.String(
         doc="""Entrer l'Application ID de l'API Météo-France ici et cliquer ENTER..."""
@@ -119,7 +122,8 @@ class DataStoreObservations(pn.viewable.Viewer):
         # Widgets pour la liste des stations
         self._sortie_recuperer_liste_stations = pn.bind(
             self._montrer_liste_stations_widgets, self.param.application_id)
-        self._bouton_liste_stations = pn.widgets.Button(button_type='primary')
+        self._bouton_liste_stations = pn.widgets.Button(
+            button_type='primary', width=LARGEUR_BOUTONS)
         self._sortie_liste_stations = pn.bind(
             self._recuperer_liste_stations, self._bouton_liste_stations)
         self._sortie_selectionner_plus_proches_voisins = pn.bind(
@@ -143,7 +147,8 @@ class DataStoreObservations(pn.viewable.Viewer):
         self._nn_rayon_km_widget = pn.widgets.EditableFloatSlider.from_param(
             self.param.nn_rayon_km,
             name="Distance maximale des stations à la référence (> 0)")
-        self._bouton_liste_stations_nn = pn.widgets.Button(button_type='primary')
+        self._bouton_liste_stations_nn = pn.widgets.Button(
+            button_type='primary', width=LARGEUR_BOUTONS)
         self._sortie_bouton_liste_stations_nn = pn.bind(
             self._montrer_bouton_liste_stations_nn,
             self._ref_station_name_widget,
@@ -167,7 +172,8 @@ class DataStoreObservations(pn.viewable.Viewer):
         self._lire_dernieres24h_widget = pn.widgets.Checkbox.from_param(
             self.param.lire_dernieres24h,
             name="Récupérer les dernières 24 h")
-        self._bouton_donnee_liste_stations = pn.widgets.Button(button_type='primary')
+        self._bouton_donnee_liste_stations = pn.widgets.Button(
+            button_type='primary', width=LARGEUR_BOUTONS)
         self._sortie_donnee_liste_stations = pn.bind(
             self._recuperer_donnee_liste_stations, self._bouton_donnee_liste_stations)
         self._sortie_date_deb = pn.bind(
@@ -184,7 +190,8 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._montrer_donnee_ref_widgets,
             self.tab_meteo, self.tab_liste_stations_nn,
             self._lire_donnee_ref_widget)
-        self._bouton_donnee_ref = pn.widgets.Button(button_type='primary')
+        self._bouton_donnee_ref = pn.widgets.Button(
+            button_type='primary', width=LARGEUR_BOUTONS)
         self._sortie_donnee_ref = pn.bind(
             self._recuperer_donnee_ref, self._bouton_donnee_ref)
 
@@ -226,8 +233,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             "### Récupération de la liste complète des stations")
         self._bouton_liste_stations.disabled = True
         self._bouton_liste_stations.name = (
-            "Donner l'Application ID pour pouvoir récupérer "
-            "la liste des stations...")
+            "D'abord donner l'Application ID...")
         if application_id:
             self._bouton_liste_stations.disabled = False
             self._bouton_liste_stations.name = (
@@ -250,7 +256,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Lecture de la liste des stations
                     self.tab_liste_stations.value = pd.read_csv(
                         filepath, index_col=self._client.id_station_label)
-                    msg = pn.pane.Markdown("Liste des stations lue:")
+                    msg = pn.pane.Alert("Liste des stations lue.",
+                                        alert_type=ALERT_TYPE)
                 else:
                     # Demande de la liste des stations
                     section = meteofrance.SECTION_LISTE_STATIONS
@@ -259,7 +266,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                         self._client, response, index_col=self._client.id_station_label)
                     # Sauvegarde de la liste des stations
                     self.tab_liste_stations.value.to_csv(filepath)
-                    msg = pn.pane.Markdown("Liste des stations téléchargée:")
+                    msg = pn.pane.Alert("Liste des stations téléchargée.", 
+                                        alert_type=ALERT_TYPE)
 
                 assert len(self.tab_liste_stations.value) != 0, (
                     "La table de la liste des stations est vide!")
@@ -270,8 +278,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     msg,
-                    self.tab_liste_stations,
-                    pn.Row(dst_filename, bouton_telechargement)
+                    dst_filename,
+                    bouton_telechargement
                 )
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
@@ -300,8 +308,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             "d'une station de référence")
         self._bouton_liste_stations_nn.disabled = True
         self._bouton_liste_stations_nn.name = (
-            "Récupérer la liste complète des stations pour "
-            "sélectionner les plus proches de la référence...")
+            "D'abord récupérer la liste complète des stations...")
         sortie = pn.Column(
             titre,
             self._bouton_liste_stations_nn
@@ -313,8 +320,10 @@ class DataStoreObservations(pn.viewable.Viewer):
             sortie = pn.Column(
                 titre,
                 pn.pane.Markdown("#### Définition de la station de référence"),
-                pn.Row(self._ref_station_name_widget, self._ref_station_altitude_widget),
-                pn.Row(self._ref_station_lat_widget, self._ref_station_lon_widget),
+                self._ref_station_name_widget,
+                self._ref_station_altitude_widget,
+                self._ref_station_lat_widget,
+                self._ref_station_lon_widget,
                 pn.pane.Markdown("#### Sélection des stations plus proches"),
                 self._nn_rayon_km_widget,
                 self._sortie_bouton_liste_stations_nn,
@@ -345,10 +354,11 @@ class DataStoreObservations(pn.viewable.Viewer):
                     button_kwargs={'name': 'Télécharger la liste des stations les plus proches'}
                 )
                 sortie = pn.Column(
-                    pn.pane.Markdown(
-                        "Stations les plus proches sélectionnées:"),
-                    self.tab_liste_stations_nn,
-                    pn.Row(dst_filename, bouton_telechargement)
+                    pn.pane.Alert("Stations les plus proches sélectionnées.",
+                                  alert_type=ALERT_TYPE),
+                    self.tab_liste_stations_nn.value[self._client.station_name_label],
+                    dst_filename,
+                    bouton_telechargement
                 )
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
@@ -405,16 +415,14 @@ class DataStoreObservations(pn.viewable.Viewer):
 
     def _montrer_donnee_liste_stations_widgets(self, df_liste_stations_nn):
         titre = pn.pane.Markdown(
-            "### Obtention des données météorologiques horaires "
-            "pour les stations voisines")
+            "### Obtention des données météo pour les stations voisines")
         self._bouton_donnee_liste_stations.disabled = True
         self._bouton_donnee_liste_stations.name = (
-            "Récupérer la liste des stations les plus proches pour "
-            "pouvoir récupérer leur donnée météo...")
+            "D'abord récupérer la liste des stations les plus proches...")
         if len(df_liste_stations_nn) > 0:
             self._bouton_donnee_liste_stations.disabled = False
             self._bouton_donnee_liste_stations.name = (
-                "Cliquer pour récupérer la donnée météo pour la liste des stations")
+                "Cliquer pour récupérer la donnée météo pour les stations")
         return pn.Column(
                 titre,
                 self._bouton_donnee_liste_stations,
@@ -436,7 +444,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                         filepath, parse_dates=[self._client.time_label],
                         index_col=[self._client.id_station_donnee_label,
                                    self._client.time_label])
-                    msg = pn.pane.Markdown("Donnée météo pour la liste des stations lue:")
+                    msg = pn.pane.Alert("Donnée météo pour la liste des stations lue.",
+                                        alert_type=ALERT_TYPE)
                 else:
                     # Demande de la donnée météo pour la liste des stations pour les dernières 24 h
                     variables = [self._client.variables_labels[METEOFRANCE_FREQUENCE][k]
@@ -447,7 +456,8 @@ class DataStoreObservations(pn.viewable.Viewer):
     
                     # Sauvegarde de la donnée météo pour la liste des stations
                     self.tab_meteo.value.to_csv(filepath)
-                    msg = pn.pane.Markdown("Donnée météo pour la liste des stations téléchargée:")
+                    msg = pn.pane.Alert("Donnée météo pour la liste des stations téléchargée.",
+                                        alert_type=ALERT_TYPE)
 
                 assert len(self.tab_meteo.value) != 0, (
                     "La table de la donnée météo pour la liste des stations est vide!")
@@ -459,8 +469,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     msg,
-                    self.tab_meteo,
-                    pn.Row(dst_filename, bouton_telechargement, self._date_deb_widget.value, self._date_fin_widget.value)
+                    dst_filename,
+                    bouton_telechargement
                 )
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
@@ -473,17 +483,15 @@ class DataStoreObservations(pn.viewable.Viewer):
         lire_donnee_ref
     ):
         titre = pn.pane.Markdown(
-            "### Interpolation des données météorologiques "
-            "à la station de référence")
+            "### Interpolation des données météo pour la station de référence")
         self._bouton_donnee_ref.disabled = True
         self._bouton_donnee_ref.name = (
-            "Récupérer la donnée météo des stations pour pouvoir "
-            "les interpoler à la station de référence...")
+            "D'abord récupérer la donnée météo des stations...")
         if ((len(df_meteo) > 0) or
             ((len(df_liste_stations_nn) > 0) and lire_donnee_ref)):
             self._bouton_donnee_ref.disabled = False
             self._bouton_donnee_ref.name = (
-                "Cliquer pour récupérer la donnée météo pour la station de référence")
+                "Cliquer pour récupérer la donnée météo pour la référence")
         return pn.Column(
                 titre,
                 self._bouton_donnee_ref,
@@ -505,7 +513,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                     df_meteo_ref_heure = pd.read_csv(
                         filepath, parse_dates=[self._client.time_label],
                         index_col=self._client.time_label)
-                    msg = pn.pane.Markdown("Donnée météo pour la station de référence lue:")
+                    msg = pn.pane.Alert("Donnée météo pour la station de référence lue.",
+                                        alert_type=ALERT_TYPE)
                 else:
                     # Demande de la donnée météo pour la station de référence
                     df_meteo_ref_heure = geo.interpolation_inverse_distance_carre(
@@ -513,7 +522,8 @@ class DataStoreObservations(pn.viewable.Viewer):
     
                     # Sauvegarde de la donnée météo pour la station de référence
                     df_meteo_ref_heure.to_csv(filepath)
-                    msg = pn.pane.Markdown("Donnée météo pour la station de référence interpolée:")
+                    msg = pn.pane.Alert("Donnée météo pour la station de référence interpolée.",
+                                           alert_type=ALERT_TYPE)
 
                 df_meteo_ref_heure_renom = meteofrance.renommer_variables(
                     self._client, df_meteo_ref_heure, METEOFRANCE_FREQUENCE)
@@ -550,9 +560,8 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     msg,
-                    self.tab_meteo_ref_heure_si,
-                    pn.Row(dst_filename, bouton_telechargement),
-                    self.tab_meteo_ref_si.value
+                    dst_filename,
+                    bouton_telechargement,
                 )
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
