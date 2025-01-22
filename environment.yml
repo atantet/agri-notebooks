@@ -2,10 +2,12 @@ name: agri_notebooks
 
 channels:
   - plotly
+  - pyviz
   - conda-forge
   - defaults
 
 dependencies:
+  - jupyter-panel-proxy
   - numpy
   - pandas
   - panel>=1
