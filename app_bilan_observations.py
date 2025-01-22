@@ -1,7 +1,3 @@
-# TODO
-# temporisation
-# Réinitialiser bouton
-# Layout/Template
 import pandas as pd
 import panel as pn
 import param
