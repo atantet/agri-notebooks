@@ -65,13 +65,15 @@ def calcul_reserve_utile(
     profondeur_enracinement = PROFONDEUR_ENRACINEMENT_TYPIQUE[culture]
     profondeur_terrefine = profondeur_enracinement * (1. - fraction_cailloux)
 
-    ru = ru_par_cm_de_tf_texture * profondeur_terrefine * fraction_ru_remplie
+    ru = ru_par_cm_de_tf_texture * profondeur_terrefine
+    
+    ru_remplie = ru * fraction_ru_remplie
 
-    return profondeur_enracinement, profondeur_terrefine, ru 
+    return profondeur_enracinement, profondeur_terrefine, ru, ru_remplie
 
-def calcul_reserve_facilement_utilisable(ru, ru_vers_rfu):
+def calcul_reserve_facilement_utilisable(ru_remplie, ru_vers_rfu):
     ''' Calcul de la RFU (mm).'''
-    return ru * ru_vers_rfu
+    return ru_remplie * ru_vers_rfu
 
 def calcul_etm_culture(culture, stade, df_meteo):
     ''' Calcul de l'évalotranspiration maximale de la culture (mm).'''
@@ -98,20 +100,26 @@ def calcul_bilan(
 
     df['etp'] = -df_meteo['etp']
 
-    df['profondeur_enracinement'], df['profondeur_terrefine'], df['ru'] = (
-        calcul_reserve_utile(texture, fraction_cailloux, culture, fraction_ru_remplie))
-    
-    df['rfu'] = calcul_reserve_facilement_utilisable(df['ru'], ru_vers_rfu)
-
-    if rfu_cible is None:
-        rfu_cible = df['rfu']
+    cru = calcul_reserve_utile(texture, fraction_cailloux, culture,
+                               fraction_ru_remplie)
+    df['profondeur_enracinement'] = cru[0]
+    df['profondeur_terrefine'] = cru[1]
+    df['ru'] = cru[2]
+    ru_remplie = cru[3]
+    df['rfu'] = calcul_reserve_facilement_utilisable(
+            df['ru'], ru_vers_rfu)
+    df['rfu_deficit'] = calcul_reserve_facilement_utilisable(
+        ru_remplie, ru_vers_rfu) - df['rfu']
     
     df['precipitation'] = df_meteo['precipitation']
     
     df['etm_culture'] = -calcul_etm_culture(culture, stade, df_meteo)
 
+    if rfu_cible is None:
+        rfu_cible = df['rfu']
+
     df['besoin_irrigation'] = rfu_cible - (
-        df['rfu'] + df['precipitation'] + df['etm_culture'])
+        df['rfu'] + df['rfu_deficit'] + df['precipitation'] + df['etm_culture'])
     
     df['rfu_cible'] = rfu_cible
 

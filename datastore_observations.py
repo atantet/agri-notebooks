@@ -22,7 +22,6 @@ VARIABLES_POUR_CALCULS_SANS_ETP = VARIABLES_POUR_CALCULS.copy()
 del VARIABLES_POUR_CALCULS_SANS_ETP['etp']
 
 LARGEUR_BOUTONS = 450
-ALERT_TYPE = "success"
 
 class DataStoreObservations(pn.viewable.Viewer):
     application_id = param.String(
@@ -203,12 +202,15 @@ class DataStoreObservations(pn.viewable.Viewer):
         )
         
     def _entrer_application_id(self, application_id):
-        guide = pn.pane.Str("Application ID vide. Recommencer...")
+        guide = pn.pane.Alert(
+            "Application ID vide. L'entrer pour poursuivre...",
+            alert_type="warning")
         sortie = guide
         if application_id:
             self._client.application_id = application_id
-            sortie = pn.pane.Str(
-                "Client initialisé pour l'API Météo-France. Poursuivre...")
+            sortie = pn.pane.Alert(
+                "Client initialisé pour l'API Météo-France. Poursuivre...",
+                alert_type="success")
         return sortie
 
     def _montrer_lire_liste_stations_widget(
@@ -257,7 +259,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     self.tab_liste_stations.value = pd.read_csv(
                         filepath, index_col=self._client.id_station_label)
                     msg = pn.pane.Alert("Liste des stations lue.",
-                                        alert_type=ALERT_TYPE)
+                                        alert_type="success")
                 else:
                     # Demande de la liste des stations
                     section = meteofrance.SECTION_LISTE_STATIONS
@@ -267,7 +269,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Sauvegarde de la liste des stations
                     self.tab_liste_stations.value.to_csv(filepath)
                     msg = pn.pane.Alert("Liste des stations téléchargée.", 
-                                        alert_type=ALERT_TYPE)
+                                        alert_type="success")
 
                 assert len(self.tab_liste_stations.value) != 0, (
                     "La table de la liste des stations est vide!")
@@ -355,7 +357,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     pn.pane.Alert("Stations les plus proches sélectionnées.",
-                                  alert_type=ALERT_TYPE),
+                                  alert_type="success"),
                     self.tab_liste_stations_nn.value[self._client.station_name_label],
                     dst_filename,
                     bouton_telechargement
@@ -445,7 +447,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                         index_col=[self._client.id_station_donnee_label,
                                    self._client.time_label])
                     msg = pn.pane.Alert("Donnée météo pour la liste des stations lue.",
-                                        alert_type=ALERT_TYPE)
+                                        alert_type="success")
                 else:
                     # Demande de la donnée météo pour la liste des stations pour les dernières 24 h
                     variables = [self._client.variables_labels[METEOFRANCE_FREQUENCE][k]
@@ -457,7 +459,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Sauvegarde de la donnée météo pour la liste des stations
                     self.tab_meteo.value.to_csv(filepath)
                     msg = pn.pane.Alert("Donnée météo pour la liste des stations téléchargée.",
-                                        alert_type=ALERT_TYPE)
+                                        alert_type="success")
 
                 assert len(self.tab_meteo.value) != 0, (
                     "La table de la donnée météo pour la liste des stations est vide!")
@@ -514,7 +516,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                         filepath, parse_dates=[self._client.time_label],
                         index_col=self._client.time_label)
                     msg = pn.pane.Alert("Donnée météo pour la station de référence lue.",
-                                        alert_type=ALERT_TYPE)
+                                        alert_type="success")
                 else:
                     # Demande de la donnée météo pour la station de référence
                     df_meteo_ref_heure = geo.interpolation_inverse_distance_carre(
@@ -523,7 +525,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     # Sauvegarde de la donnée météo pour la station de référence
                     df_meteo_ref_heure.to_csv(filepath)
                     msg = pn.pane.Alert("Donnée météo pour la station de référence interpolée.",
-                                           alert_type=ALERT_TYPE)
+                                           alert_type="success")
 
                 df_meteo_ref_heure_renom = meteofrance.renommer_variables(
                     self._client, df_meteo_ref_heure, METEOFRANCE_FREQUENCE)

@@ -29,11 +29,15 @@ DEFAUT_SEUIL_IRRIGATION = 0.1
 DEFAUT_HAUTEUR_VERS_DUREE_IRRIGATION = 10
 
 # Distribution des variables par panel pour le subplot de la météo
-DEFAULT_PANELS_VARIABLES = [[
-            ['temperature_2m', 'humidite_relative'],
-            ['rayonnement_global', 'vitesse_vent_10m'],
-            ['precipitation', 'etp']
-        ]]
+DEFAULT_PANELS_VARIABLES = [
+    [
+        ['temperature_2m', 'humidite_relative'],
+        ['rayonnement_global', 'vitesse_vent_10m']
+    ],
+    [
+        ['precipitation', 'etp']
+    ]
+]
 
 class View(pn.viewable.Viewer):
     datastore = param.ClassSelector(class_=DataStoreObservations)
@@ -49,7 +53,7 @@ class ViewerMeteoObservations(View):
     def _creer_plot_meteo(
         self, df,
         panels_variables=DEFAULT_PANELS_VARIABLES,
-        width=1200, height=400
+        width=900, height=600
     ):
         rows = len(panels_variables)
         cols = len(panels_variables[0])
@@ -78,9 +82,9 @@ class ViewerMeteoObservations(View):
         return pn.pane.Plotly(fig)
 
     def _creer_plots(self, df):
-        guide = pn.pane.Str(
+        guide = pn.pane.Alert(
             "Récupérérer la donnée météo de la station de référence "
-            "pour pouvoir représenter sa météo...")
+            "pour pouvoir représenter sa météo...", alert_type="warning")
         sortie = guide
         if len(df) > 0:
             sortie = self._creer_plot_meteo(df)
@@ -155,7 +159,7 @@ class ViewerBilanObservations(View):
         idx_deb = 1
         idx_fin = 5
         x = s.index[idx_deb:]
-        s_ru = s.iloc[1:5].astype(float).values
+        s_ru = s.iloc[idx_deb:idx_fin].astype(float).values
         y = np.concatenate([[s_ru[0]], s_ru[1:] - s_ru[:-1]])
         measure = ['absolute'] + ['delta'] * (idx_fin - idx_deb - 1)
         wf = go.Waterfall(x=x, y=y, measure=measure,
@@ -172,7 +176,7 @@ class ViewerBilanObservations(View):
 
     def _creer_plot_besoin(self, s, width=500, height=400):
         idx_deb = 4
-        idx_fin = 9
+        idx_fin = 10
         x = s.index[idx_deb:]
         y = s.iloc[idx_deb:idx_fin].astype(float)
         measure = ['absolute'] + ['relative'] * (idx_fin - idx_deb - 2) + ['absolute']
@@ -194,9 +198,9 @@ class ViewerBilanObservations(View):
         seuil_irrigation, hauteur_vers_duree_irrigation,
         culture, stade
     ):
-        guide = pn.pane.Str(
+        guide = pn.pane.Alert(
             "Récupérérer la donnée météo de la station de référence "
-            "pour pouvoir exécuter le bilan hydrique...")
+            "pour pouvoir exécuter le bilan hydrique...", alert_type="warning")
         sortie = guide
         if len(df) > 0:
             sortie = pn.Column(
