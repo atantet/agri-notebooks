@@ -15,14 +15,14 @@ def conversion_latlon_rad(df_liste_stations, latlon_labels):
     return df_latlon_rad
 
 def calcul_arbre(df_liste_stations, latlon_labels):
-    '''Calcul de l'arbre des plus proches voisins pour la liste des stations.'''
+    '''Calcul de l'arbre des stations les plus proches.'''
     df_latlon_rad = conversion_latlon_rad(df_liste_stations, latlon_labels)
 
     arbre = BallTree(df_latlon_rad, metric='haversine')
 
     return arbre
 
-def selection_plus_proches_voisins(
+def selection_stations_plus_proches(
     df_liste_stations, ref_station_latlon, latlon_labels,
     nombre=None, rayon_km=None):
     
@@ -32,10 +32,10 @@ def selection_plus_proches_voisins(
     ref_station_latlon_rad = np.deg2rad(ref_station_latlon)
     
     if nombre is not None:
-        # Identification d'un certain nombre de plus proches voisins
+        # Identification d'un certain nombre de stations les plus proches
         dist_rad_arr, ind_arr = arbre.query([ref_station_latlon_rad], k=nombre)
     elif rayon_km is not None:
-        # Identification des plus proches voisins dans un certain rayon
+        # Identification des stations les plus proches dans un certain rayon
         rayon_rad = rayon_km / RAYON_TERRE_KM
         ind_arr, dist_rad_arr = arbre.query_radius(
             [ref_station_latlon_rad], rayon_rad,
@@ -46,14 +46,14 @@ def selection_plus_proches_voisins(
     # Conversion en km de la distance en rad
     dist_km = np.round(dist_rad * RAYON_TERRE_KM).astype(int)
 
-    # Sélection des plus proches voisins
+    # Sélection des stations les plus proches
     df_liste_stations_nn = df_liste_stations.iloc[ind].copy()
     df_liste_stations_nn.loc[:, 'distance'] = dist_km
     
     return df_liste_stations_nn
 
 def interpolation_inverse_distance_carre(df, s_dist_km):
-    '''Interpolation des plus proches voisins pondérée par l'inverse de la distance au carré.'''
+    '''Interpolation des stations les plus proches pondérée par l'inverse de la distance au carré.'''
     # Calcul des poids à partir des distances
     poids = 1. / s_dist_km**2
 

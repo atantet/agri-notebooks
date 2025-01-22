@@ -67,6 +67,10 @@ class DataStoreObservations(pn.viewable.Viewer):
         default=False,
         doc="""Cliquer pour lire la donnée météo pour la station de référence au lieu de la télécharger..."""
     )
+    recuperation_donnee_liste_stations_faite = param.Boolean(default=False)
+    recuperation_donnee_ref_faite = param.Boolean(default=False)
+    selection_stations_plus_proches_faite = param.Boolean(default=False)
+    recuperation_liste_stations_faite = param.Boolean(default=False)
     
     def __init__(self, **params):
         super().__init__(**params)
@@ -125,8 +129,6 @@ class DataStoreObservations(pn.viewable.Viewer):
             button_type='primary', width=LARGEUR_BOUTONS)
         self._sortie_liste_stations = pn.bind(
             self._recuperer_liste_stations, self._bouton_liste_stations)
-        self._sortie_selectionner_plus_proches_voisins = pn.bind(
-            self._montrer_plus_proches_voisins_widgets, self.tab_liste_stations)
         
         # Widgets pour la station de référence
         self._ref_station_name_widget = pn.widgets.TextInput.from_param(
@@ -143,6 +145,9 @@ class DataStoreObservations(pn.viewable.Viewer):
             name="Longitude de la station de référence")
 
         # Widgets pour les plus proches voisins
+        self._sortie_selectionner_stations_plus_proches = pn.bind(
+            self._montrer_stations_plus_proches_widgets,
+            self.param.recuperation_liste_stations_faite)
         self._nn_rayon_km_widget = pn.widgets.EditableFloatSlider.from_param(
             self.param.nn_rayon_km,
             name="Distance maximale des stations à la référence (> 0)")
@@ -156,38 +161,41 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._ref_station_lon_widget,
             self._nn_rayon_km_widget)
         self._sortie_liste_stations_nn = pn.bind(
-            self._selectionner_plus_proches_voisins, self._bouton_liste_stations_nn)
-        self._sortie_recuperer_donnee_liste_stations = pn.bind(
-            self._montrer_donnee_liste_stations_widgets, self.tab_liste_stations_nn)
+            self._selectionner_stations_plus_proches, self._bouton_liste_stations_nn)
 
-        # Widgets pour la donnée météo pour la liste des stations
+        # Widgets pour la définition de la période
         self._date_deb_widget = pn.widgets.DatetimePicker.from_param(
             self.param.date_deb, disabled=True,
             name="Date UTC de début de période météo de 24 h (calculée à partir de la date de fin)")
         self._date_fin_widget = pn.widgets.DatetimePicker.from_param(
             self.param.date_fin,
             name="Date UTC de fin de période météo de 24 h (YYYY-mm-dd HH:MM:SS)")
-        
         self._lire_dernieres24h_widget = pn.widgets.Checkbox.from_param(
             self.param.lire_dernieres24h,
             name="Récupérer les dernières 24 h")
-        self._bouton_donnee_liste_stations = pn.widgets.Button(
-            button_type='primary', width=LARGEUR_BOUTONS)
-        self._sortie_donnee_liste_stations = pn.bind(
-            self._recuperer_donnee_liste_stations, self._bouton_donnee_liste_stations)
         self._sortie_date_deb = pn.bind(
             self._montrer_date_deb_widget, self._date_fin_widget)
         self._sortie_dates = pn.bind(
             self._montrer_dates_widgets, self._lire_dernieres24h_widget)
         self._sortie_choix_periode = pn.bind(
             self._montrer_choix_periode_widgets,
-            self.tab_liste_stations_nn,
+            self.param.selection_stations_plus_proches_faite,
             self._lire_donnee_liste_stations_widget)
+        
+        # Widgets pour la donnée météo pour la liste des stations
+        self._bouton_donnee_liste_stations = pn.widgets.Button(
+            button_type='primary', width=LARGEUR_BOUTONS)
+        self._sortie_donnee_liste_stations = pn.bind(
+            self._recuperer_donnee_liste_stations, 
+            self._bouton_donnee_liste_stations)
+        self._sortie_recuperer_donnee_liste_stations = pn.bind(
+            self._montrer_donnee_liste_stations_widgets,
+            self.param.selection_stations_plus_proches_faite)
 
         # Widgets pour la donnée météo pour la station de référence
         self._sortie_recuperer_donnee_ref = pn.bind(
             self._montrer_donnee_ref_widgets,
-            self.tab_meteo, self.tab_liste_stations_nn,
+            self.param.recuperation_donnee_liste_stations_faite,
             self._lire_donnee_ref_widget)
         self._bouton_donnee_ref = pn.widgets.Button(
             button_type='primary', width=LARGEUR_BOUTONS)
@@ -283,6 +291,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     dst_filename,
                     bouton_telechargement
                 )
+                self.recuperation_liste_stations_faite = True
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
             return sortie
@@ -304,7 +313,9 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._bouton_liste_stations_nn.disabled = True
         return self._bouton_liste_stations_nn
 
-    def _montrer_plus_proches_voisins_widgets(self, df_liste_stations):
+    def _montrer_stations_plus_proches_widgets(
+        self, recuperation_liste_stations_faite
+    ):
         titre = pn.pane.Markdown(
             "### Sélection des stations les plus proches "
             "d'une station de référence")
@@ -315,7 +326,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             titre,
             self._bouton_liste_stations_nn
         )
-        if len(df_liste_stations) > 0:
+        if recuperation_liste_stations_faite:
             self._bouton_liste_stations_nn.disabled = False
             self._bouton_liste_stations_nn.name = (
                 "Cliquer pour sélectionner les stations les plus proches")            
@@ -333,7 +344,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             )
         return sortie        
 
-    def _selectionner_plus_proches_voisins(self, event):
+    def _selectionner_stations_plus_proches(self, event):
         sortie = None
         if event:
             # Écraser la liste des stations les plus proches précédente
@@ -341,7 +352,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             try:
                 ref_station_latlon = [self._ref_station_lat_widget.value,
                                       self._ref_station_lon_widget.value]
-                self.tab_liste_stations_nn.value = geo.selection_plus_proches_voisins(
+                self.tab_liste_stations_nn.value = geo.selection_stations_plus_proches(
                     self.tab_liste_stations.value, ref_station_latlon,
                     self._client.latlon_labels,
                     rayon_km=self._nn_rayon_km_widget.value)
@@ -362,6 +373,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     dst_filename,
                     bouton_telechargement
                 )
+                self.selection_stations_plus_proches_faite = True
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
             return sortie
@@ -386,7 +398,7 @@ class DataStoreObservations(pn.viewable.Viewer):
         )
 
     def _montrer_choix_periode_widgets(
-        self, df_liste_stations_nn,
+        self, selection_stations_plus_proches_faite,
         lire_donnee_liste_stations
     ):
         titre = pn.pane.Markdown(
@@ -405,7 +417,7 @@ class DataStoreObservations(pn.viewable.Viewer):
         self._date_deb_widget.value = self._date_fin_widget.value - pd.Timedelta(hours=23)
         if lire_donnee_liste_stations:
             self._lire_dernieres24h_widget.name = "Récupérer les dernières 24 h"
-            if len(df_liste_stations_nn) > 0:
+            if selection_stations_plus_proches_faite:
                 self._lire_dernieres24h_widget.value = False
                 self._lire_dernieres24h_widget.disabled = False
                 sortie = pn.Column(
@@ -415,13 +427,14 @@ class DataStoreObservations(pn.viewable.Viewer):
             
         return sortie
 
-    def _montrer_donnee_liste_stations_widgets(self, df_liste_stations_nn):
+    def _montrer_donnee_liste_stations_widgets(
+        self, selection_stations_plus_proches_faite):
         titre = pn.pane.Markdown(
             "### Obtention des données météo pour les stations voisines")
         self._bouton_donnee_liste_stations.disabled = True
         self._bouton_donnee_liste_stations.name = (
             "D'abord récupérer la liste des stations les plus proches...")
-        if len(df_liste_stations_nn) > 0:
+        if selection_stations_plus_proches_faite:
             self._bouton_donnee_liste_stations.disabled = False
             self._bouton_donnee_liste_stations.name = (
                 "Cliquer pour récupérer la donnée météo pour les stations")
@@ -474,6 +487,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     dst_filename,
                     bouton_telechargement
                 )
+                self.recuperation_donnee_liste_stations_faite = True
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
             return sortie
@@ -481,16 +495,15 @@ class DataStoreObservations(pn.viewable.Viewer):
             return sortie
 
     def _montrer_donnee_ref_widgets(
-        self, df_meteo, df_liste_stations_nn,
-        lire_donnee_ref
+        self, recuperation_donnee_liste_stations_faite, lire_donnee_ref
     ):
         titre = pn.pane.Markdown(
             "### Interpolation des données météo pour la station de référence")
         self._bouton_donnee_ref.disabled = True
         self._bouton_donnee_ref.name = (
             "D'abord récupérer la donnée météo des stations...")
-        if ((len(df_meteo) > 0) or
-            ((len(df_liste_stations_nn) > 0) and lire_donnee_ref)):
+        if ((len(self.tab_meteo.value) > 0) or
+            ((len(self.tab_liste_stations_nn.value) > 0) and lire_donnee_ref)):
             self._bouton_donnee_ref.disabled = False
             self._bouton_donnee_ref.name = (
                 "Cliquer pour récupérer la donnée météo pour la référence")
@@ -565,6 +578,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                     dst_filename,
                     bouton_telechargement,
                 )
+                self.recuperation_donnee_ref_faite = True
             except Exception as exc:
                 sortie = pn.pane.Str(traceback.format_exc())
             return sortie
@@ -579,7 +593,7 @@ class DataStoreObservations(pn.viewable.Viewer):
             self._lire_donnee_ref_widget,
             self._sortie_application_id,
             self._sortie_recuperer_liste_stations,
-            self._sortie_selectionner_plus_proches_voisins,
+            self._sortie_selectionner_stations_plus_proches,
             self._sortie_choix_periode,
             self._sortie_recuperer_donnee_liste_stations,
             self._sortie_recuperer_donnee_ref

@@ -5,7 +5,10 @@
 import pandas as pd
 import panel as pn
 import param
-pn.extension('plotly', 'tabulator')
+pn.extension(
+    'plotly', 'tabulator',
+    throttled=True, defer_load=True, loading_indicator=True
+)
 
 from datastore_observations import DataStoreObservations
 from viewer_bilan_observations import ViewerMeteoObservations, ViewerBilanObservations

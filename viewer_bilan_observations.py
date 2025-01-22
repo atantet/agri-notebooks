@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
 import numpy as np
+import traceback
 
 import bilan
 import meteofrance
@@ -47,8 +48,7 @@ class ViewerMeteoObservations(View):
         super().__init__(**params)
 
         self._sortie_plots = pn.bind(
-            self._creer_plots,
-            self.datastore.tab_meteo_ref_heure_si)
+            self._creer_plots, self.datastore.param.recuperation_donnee_ref_faite)
 
     def _creer_plot_meteo(
         self, df,
@@ -81,14 +81,20 @@ class ViewerMeteoObservations(View):
     
         return pn.pane.Plotly(fig)
 
-    def _creer_plots(self, df):
+    def _creer_plots(self, recuperation_donnee_ref_faite):
         guide = pn.pane.Alert(
             "Récupérérer la donnée météo de la station de référence "
             "pour pouvoir représenter sa météo...", alert_type="warning")
         sortie = guide
-        if len(df) > 0:
-            sortie = self._creer_plot_meteo(df)
-    
+        if recuperation_donnee_ref_faite:    
+            try:
+                df = self.datastore.tab_meteo_ref_heure_si.value
+                assert len(df) != 0, (
+                    "La table de la donnée météo pour la station de référence est vide!")
+            
+                sortie = self._creer_plot_meteo(df)
+            except Exception as exc:
+                sortie = pn.pane.Str(traceback.format_exc())    
         return sortie
 
     def __panel__(self):
@@ -141,7 +147,7 @@ class ViewerBilanObservations(View):
 
         # Liaison du plot au widgets
         self._sortie_plots = pn.bind(
-            self._creer_plots, self.datastore.tab_meteo_ref_si,
+            self._creer_plots, self.datastore.param.recuperation_donnee_ref_faite,
             self._texture_widget, self._fraction_cailloux_widget,
             self._fraction_ru_remplie_widget, self._ru_vers_rfu_widget,
             self._seuil_irrigation_widget,
@@ -193,7 +199,7 @@ class ViewerBilanObservations(View):
         return pn.pane.Plotly(fig)
 
     def _creer_plots(
-        self, df, texture, fraction_cailloux,
+        self, recuperation_donnee_ref_faite, texture, fraction_cailloux,
         fraction_ru_remplie, ru_vers_rfu,
         seuil_irrigation, hauteur_vers_duree_irrigation,
         culture, stade
@@ -202,45 +208,52 @@ class ViewerBilanObservations(View):
             "Récupérérer la donnée météo de la station de référence "
             "pour pouvoir exécuter le bilan hydrique...", alert_type="warning")
         sortie = guide
-        if len(df) > 0:
-            sortie = pn.Column(
-                pn.Row(self._texture_widget,
-                       self._fraction_cailloux_widget),
-                pn.Row(self._fraction_ru_remplie_widget,
-                       self._ru_vers_rfu_widget),
-                pn.Row(self._seuil_irrigation_widget,
-                       self._hauteur_vers_duree_irrigation_widget),
-                pn.Row(self._culture_widget,
-                       self._sortie_maj_stades_culture_choisie)
-            )
+        if recuperation_donnee_ref_faite:
+            try:
+                df = self.datastore.tab_meteo_ref_si.value
+                assert len(df) != 0, (
+                    "La table de la donnée météo pour la station de référence est vide!")
+
+                sortie = pn.Column(
+                    pn.Row(self._texture_widget,
+                           self._fraction_cailloux_widget),
+                    pn.Row(self._fraction_ru_remplie_widget,
+                           self._ru_vers_rfu_widget),
+                    pn.Row(self._seuil_irrigation_widget,
+                           self._hauteur_vers_duree_irrigation_widget),
+                    pn.Row(self._culture_widget,
+                           self._sortie_maj_stades_culture_choisie)
+                )
             
-            # Get the data
-            df_bilan = bilan.calcul_bilan(
-                df.iloc[0],
-                texture, fraction_cailloux,
-                culture, stade,
-                fraction_ru_remplie, ru_vers_rfu,
-                seuil_irrigation=seuil_irrigation,
-                hauteur_vers_duree_irrigation=hauteur_vers_duree_irrigation)  
+                # Get the data
+                df_bilan = bilan.calcul_bilan(
+                    df.iloc[0],
+                    texture, fraction_cailloux,
+                    culture, stade,
+                    fraction_ru_remplie, ru_vers_rfu,
+                    seuil_irrigation=seuil_irrigation,
+                    hauteur_vers_duree_irrigation=hauteur_vers_duree_irrigation)  
 
-            plot_sol = self._creer_plot_sol(df_bilan)
-            plot_besoin = self._creer_plot_besoin(df_bilan)
-            plot_titre = pn.pane.Markdown(
-                f"### Pour {culture.lower()} au stade {stade.lower()}")
+                plot_sol = self._creer_plot_sol(df_bilan)
+                plot_besoin = self._creer_plot_besoin(df_bilan)
+                plot_titre = pn.pane.Markdown(
+                    f"### Pour {culture.lower()} au stade {stade.lower()}")
 
-            sortie = pn.Column(
-                sortie,
-                plot_titre,
-                pn.Row(plot_sol, plot_besoin)
-            )
-    
-            if df_bilan['irrigation']:
-                plot_irrigation = pn.pane.Markdown(
-                    f"### Besoin d'arroser {df_bilan['duree_irrigation']:.0f} min")
                 sortie = pn.Column(
                     sortie,
-                    plot_irrigation
+                    plot_titre,
+                    pn.Row(plot_sol, plot_besoin)
                 )
+    
+                if df_bilan['irrigation']:
+                    plot_irrigation = pn.pane.Markdown(
+                        f"### Besoin d'arroser {df_bilan['duree_irrigation']:.0f} min")
+                    sortie = pn.Column(
+                        sortie,
+                        plot_irrigation
+                    )
+            except Exception as exc:
+                sortie = pn.pane.Str(traceback.format_exc())    
     
         return sortie
         
