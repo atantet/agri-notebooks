@@ -1,4 +1,4 @@
-name: agri_notebooks
+name: app_bilan_hydrique
 
 channels:
   - plotly
