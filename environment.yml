@@ -1,8 +1,6 @@
 name: app_bilan_hydrique
 
 channels:
-  - plotly
-  - pyviz
   - conda-forge
   - defaults
 
