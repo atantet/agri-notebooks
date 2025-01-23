@@ -43,7 +43,7 @@ DEFAULT_PANELS_VARIABLES = [
 class View(pn.viewable.Viewer):
     datastore = param.ClassSelector(class_=DataStoreObservations)
 
-class ViewerIntroduction(pn.viewable.Viewer):
+class ViewerIntroduction(View):
     def __panel__(self):
         return pn.Column(
             pn.pane.Markdown(
