@@ -22,6 +22,14 @@ VARIABLES_POUR_CALCULS_SANS_ETP = VARIABLES_POUR_CALCULS.copy()
 del VARIABLES_POUR_CALCULS_SANS_ETP['etp']
 
 LARGEUR_BOUTONS = 450
+PARAMS_TABULATOR = dict(
+    frozen_columns={0: 'left'},
+    disabled=True,
+    pagination="local",
+    page_size=8,
+    stylesheets=[":host .tabulator {font-size: 10px;}"],
+    width=LARGEUR_BOUTONS
+)
 
 class DataStoreObservations(pn.viewable.Viewer):
     application_id = param.String(
@@ -84,19 +92,12 @@ class DataStoreObservations(pn.viewable.Viewer):
         self._client = meteofrance.Client(METEOFRANCE_API)
         
         # Donnée
-        self.tab_liste_stations = pn.widgets.Tabulator(
-            pd.DataFrame(), disabled=True, pagination="local")
-        self.tab_liste_stations_nn = pn.widgets.Tabulator(
-            pd.DataFrame(), disabled=True, pagination="local")
-        self.tab_meteo = pn.widgets.Tabulator(
-            pd.DataFrame(), disabled=True, pagination="local")
-        self.tab_meteo_ref_heure_si = pn.widgets.Tabulator(
-            pd.DataFrame(), disabled=True, pagination="local",
-            layout='fit_data_table')
-        self.tab_meteo_ref_si = pn.widgets.Tabulator(
-            pd.DataFrame(), disabled=True, pagination="local",
-            layout='fit_data_table')
-
+        self.tab_liste_stations = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
+        self.tab_liste_stations_nn = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
+        self.tab_meteo = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
+        self.tab_meteo_ref_heure_si = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
+        self.tab_meteo_ref_si = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
+        
         # Widget de lecture des données
         self._lire_liste_stations_widget = pn.widgets.Checkbox.from_param(
             self.param.lire_liste_stations,
@@ -288,8 +289,9 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     msg,
+                    self.tab_liste_stations,
                     dst_filename,
-                    bouton_telechargement
+                    bouton_telechargement,
                 )
                 self.recuperation_liste_stations_faite = True
             except Exception as exc:
@@ -369,7 +371,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 sortie = pn.Column(
                     pn.pane.Alert("Stations les plus proches sélectionnées.",
                                   alert_type="success"),
-                    self.tab_liste_stations_nn.value[self._client.station_name_label],
+                    self.tab_liste_stations_nn,
                     dst_filename,
                     bouton_telechargement
                 )
@@ -484,6 +486,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     msg,
+                    self.tab_meteo,
                     dst_filename,
                     bouton_telechargement
                 )
@@ -575,6 +578,7 @@ class DataStoreObservations(pn.viewable.Viewer):
                 )
                 sortie = pn.Column(
                     msg,
+                    self.tab_meteo_ref_heure_si,
                     dst_filename,
                     bouton_telechargement,
                 )
