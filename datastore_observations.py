@@ -23,7 +23,6 @@ del VARIABLES_POUR_CALCULS_SANS_ETP['etp']
 
 LARGEUR_BOUTONS = 450
 PARAMS_TABULATOR = dict(
-    frozen_columns={0: 'left'},
     disabled=True,
     pagination="local",
     page_size=8,
@@ -92,11 +91,21 @@ class DataStoreObservations(pn.viewable.Viewer):
         self._client = meteofrance.Client(METEOFRANCE_API)
         
         # Donnée
-        self.tab_liste_stations = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
-        self.tab_liste_stations_nn = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
-        self.tab_meteo = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
-        self.tab_meteo_ref_heure_si = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
-        self.tab_meteo_ref_si = pn.widgets.Tabulator(pd.DataFrame(), **PARAMS_TABULATOR)
+        self.tab_liste_stations = pn.widgets.Tabulator(
+            pd.DataFrame(), frozen_columns=[self._client.id_station_label],
+            **PARAMS_TABULATOR)
+        self.tab_liste_stations_nn = pn.widgets.Tabulator(
+            pd.DataFrame(), frozen_columns=[self._client.id_station_label],
+            **PARAMS_TABULATOR)
+        self.tab_meteo = pn.widgets.Tabulator(
+            pd.DataFrame(), frozen_columns=[self._client.id_station_donnee_label,
+                                            self._client.time_label],
+            **PARAMS_TABULATOR)
+        self.tab_meteo_ref_heure_si = pn.widgets.Tabulator(
+            pd.DataFrame(), frozen_columns=[self._client.time_label],
+            **PARAMS_TABULATOR)
+        self.tab_meteo_ref_si = pn.widgets.Tabulator(
+            pd.DataFrame(), **PARAMS_TABULATOR)
         
         # Widget de lecture des données
         self._lire_liste_stations_widget = pn.widgets.Checkbox.from_param(
