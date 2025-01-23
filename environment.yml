@@ -1,16 +1,15 @@
 name: app_bilan_hydrique
 
 channels:
-  - plotly
   - conda-forge
   - defaults
 
 dependencies:
-  - conda-forge::jupyter-panel-proxy
-  - conda-forge::numpy=2.0.2
-  - conda-forge::pandas=2.2.3
-  - conda-forge::panel=1.5.5
+  - jupyter-panel-proxy
+  - numpy=2.0.2
+  - pandas=2.2.3
+  - panel=1.5.5
   - plotly::plotly=5.24.1
-  - conda-forge::pvlib=0.11.2
-  - conda-forge::python=3.12.8
-  - conda-forge::scikit-learn>=1.6.0
+  - pvlib=0.11.2
+  - python=3.12.8
+  - scikit-learn>=1.6.0
