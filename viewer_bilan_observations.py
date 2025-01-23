@@ -43,6 +43,48 @@ DEFAULT_PANELS_VARIABLES = [
 class View(pn.viewable.Viewer):
     datastore = param.ClassSelector(class_=DataStoreObservations)
 
+class ViewerIntroduction(pn.viewable.Viewer):
+    def __panel__(self):
+        return pn.Column(
+            pn.pane.Markdown(
+                """
+                ## Introduction
+
+                ### Objectif
+
+                Estimer le besoin d'irrigation d'une culture sur un site particulier pour les dernières 24 heures à partir d'un bilan hydrique basé sur des observations Météo-France et d'une estimation de l'Évapo-Transpiration Potentielle (ETP).
+
+                ### Méthodologie
+
+                - Récupération de la liste des stations météo.
+                - Sélection des stations les plus proches du site de référence où est localisée la culture.
+                - Téléchargement des observations Météo-France des dernières 24 h pour les stations les plus proches.
+                - Interpolation des variables météo au site de référence.
+                - Estimation de l'ETP à partir des observations météo horaires.
+                - Calcul des valeurs journalières.
+                - Estimation du bilan hydrique à partir de l'ETP et de la précipitation, et suivant des hypothèses concernant le sol et la culture.
+
+                ### Prérequis
+                
+                Pour permettre la récupération des données Météo-France, il faut :
+
+                - Avoir ouvert un compte sur le [Portail Météo-France](https://portail-api.meteofrance.fr/).
+                - Avoir souscrit à [l'API Package Observations](https://portail-api.meteofrance.fr/web/fr/api/DonneesPubliquesPaquetObservation).
+                - Avoir copié son Application ID. Pour cela :
+                    - Se connecter au [Portail Météo-France](https://portail-api.meteofrance.fr/) ;
+                    - Aller à son [Dashboard](https://portail-api.meteofrance.fr/web/fr/dashboard) ;
+                    - Cliquer sur "Générer Token" dans la boite "Package Observations" ;
+                    - Copier l'Application IDs se trouvant dans le cadre noir sous "curl". L'Application ID est la longue chaine de caractères après "Authorization: Basic".
+
+                ### Utilisation
+
+                - Utiliser le bandeau de droite récupérer les observations météo et les interpoler pour le site de référence en suivant les instructions.
+                - Défiler la fenêtre de droite pour afficher les observations météo et le bilan hydrique pour les dernières 24 h.
+                """
+            )
+        )
+        
+
 class ViewerMeteoObservations(View):
     def __init__(self, **params):
         super().__init__(**params)
