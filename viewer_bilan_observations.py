@@ -62,7 +62,7 @@ class ViewerIntroduction(View):
                 - Interpolation des variables météo au site de référence.
                 - Estimation de l'ETP à partir des observations météo horaires.
                 - Calcul des valeurs journalières.
-                - Estimation du bilan hydrique à partir de l'ETP et de la précipitation, et suivant des hypothèses concernant le sol et la culture.
+                - Estimation du bilan hydrique à partir de l'ETP et de la précipitation, et suivant des hypothèses concernant le sol et la culture (dont l'estimation de l'évapo-transpiration maximale de la culture en fonction de son stade à partir des coefficients culturaux [ARDEPI](https://www.ardepi.fr/nos-services/vous-etes-irrigant/estimer-ses-besoins-en-eau/maraichage/)).
 
                 ### Prérequis
                 

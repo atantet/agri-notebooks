@@ -1,6 +1,6 @@
 # Application Bilan Hydrique
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/atantet/app-bilan-hydrique/HEAD?urlpath=panel/app_bilan_observations)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/atantet/app-bilan-hydrique/HEAD?urlpath=panel/app_bilan_hydrique)
 
 ## Introduction
 
@@ -16,7 +16,7 @@ Estimer le besoin d'irrigation d'une culture sur un site particulier pour les de
 - Interpolation des variables météo au site de référence.
 - Estimation de l'ETP à partir des observations météo horaires.
 - Calcul des valeurs journalières.
-- Estimation du bilan hydrique à partir de l'ETP et de la précipitation, et suivant des hypothèses concernant le sol et la culture.
+- Estimation du bilan hydrique à partir de l'ETP et de la précipitation, et suivant des hypothèses concernant le sol et la culture (dont l'estimation de l'évapotranspiration maximale de la culture en fonction de son stade à partir des coefficients culturaux [ARDEPI](https://www.ardepi.fr/nos-services/vous-etes-irrigant/estimer-ses-besoins-en-eau/maraichage/)).
 
 ### Prérequis
 
@@ -33,13 +33,13 @@ Pour permettre la récupération des données Météo-France, il faut :
 ### Utilisation de l'application
 
 - Lancer l'application. Pour cela, plusieurs possibilités (si vous ne savez pas laquelle choisir, choisissez la première) :
-  - Sur le cloud, en lançant [MyBinder](https://mybinder.org/v2/gh/atantet/app-bilan-hydrique/HEAD?urlpath=panel/app_bilan_observations), en cliquant sur le bouton ci-dessus ;
+  - Sur le cloud, en lançant [MyBinder](https://mybinder.org/v2/gh/atantet/app-bilan-hydrique/HEAD?urlpath=panel/app_bilan_hydrique), en cliquant sur le bouton ci-dessus ;
   - En local, avec [Anaconda ou Miniconda](https://www.anaconda.com/download/success), en ouvrant un terminal et en :
     - clonant ce dépôt (la première fois) : `git clone https://github.com/atantet/app-bilan-hydrique.git`,
 	- allant dans son dossier (à chaque fois) : `cd app-bilan-hydrique/`,
 	- créant son environnement conda (la première fois) : `conda env create --file=environment.yml`,
     - activant l'environnement (à chaque fois) : `conda activate app_bilan_hydrique`,
-    - lançant l'application (à chaque fois) : `panel serve app_bilan_observations.ipynb`.
+    - lançant l'application (à chaque fois) : `panel serve app_bilan_hydrique.ipynb`.
 - Une fois dans l'application, utiliser le bandeau de gauche pour récupérer les observations météo et les interpoler pour le site de référence en suivant les instructions.
 - Défiler la fenêtre de droite pour afficher les observations météo et le bilan hydrique pour les dernières 24 h.
 
