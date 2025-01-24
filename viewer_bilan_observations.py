@@ -52,7 +52,7 @@ class ViewerIntroduction(View):
 
                 ### Objectif
 
-                Estimer le besoin d'irrigation d'une culture sur un site particulier pour les dernières 24 heures à partir d'un bilan hydrique basé sur des observations Météo-France et d'une estimation de l'Évapo-Transpiration Potentielle (ETP).
+                Estimer le besoin d'irrigation d'une culture sur un site particulier pour les dernières 24 heures à partir d'un bilan hydrique basé sur des observations Météo-France et d'une estimation de l'Évapo-Transpiration Potentielle (ETP) en suivant le [calcul de la FAO](https://www.fao.org/4/X0490E/x0490e06.htm).
 
                 ### Méthodologie
 
@@ -78,7 +78,7 @@ class ViewerIntroduction(View):
 
                 ### Utilisation
 
-                - Utiliser le bandeau de droite récupérer les observations météo et les interpoler pour le site de référence en suivant les instructions.
+                - Utiliser le bandeau de gauche pour récupérer les observations météo et les interpoler pour le site de référence en suivant les instructions.
                 - Défiler la fenêtre de droite pour afficher les observations météo et le bilan hydrique pour les dernières 24 h.
                 """
             )
