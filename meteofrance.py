@@ -275,24 +275,30 @@ def get_filepath_liste_stations_nn(
     return filepath_nn
 
 def get_filepath_donnee_periode(
-    client, ref_station_name, df_liste_stations,
-    date_deb_periode, date_fin_periode,
-    frequence=None, ref=False):
+    client, ref_station_name, df_liste_stations=None,
+    date_deb_periode=None, date_fin_periode=None,
+    frequence=None, ref=False, nn_nombre=None):
     filename = f"donnees_{client.api}"
     if frequence is not None:
         filename += f"_{frequence}"
 
     str_ref_station_name = ref_station_name.lower().replace(' ', '')
-    nn_nombre = len(df_liste_stations)
-    str_nn = f"nn{nn_nombre:d}"
     
-    str_date_deb_periode = get_str_date(date_deb_periode)
-    str_date_fin_periode = get_str_date(date_fin_periode)
+    if nn_nombre is None:
+        nn_nombre = len(df_liste_stations)
+    str_nn = f"nn{nn_nombre:d}"
+
+    str_date_deb_periode = ''
+    if date_deb_periode is not None:
+        str_date_deb_periode = '_' + get_str_date(date_deb_periode)
+    str_date_fin_periode = ''
+    if date_fin_periode is not None:
+        str_date_fin_periode = '_' + get_str_date(date_fin_periode)
 
     str_station = "ref" if ref else "stations"
     
     filename += (f"_{str_ref_station_name}_{str_nn}"
-                 f"_{str_date_deb_periode}_{str_date_fin_periode}"
+                 f"{str_date_deb_periode}{str_date_fin_periode}"
                  f"_{str_station}.csv")
     parent = DATA_DIR / client.api
     parent.mkdir(parents=True, exist_ok=True)

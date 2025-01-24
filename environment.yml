@@ -6,6 +6,7 @@ channels:
 
 dependencies:
   - jupyter-panel-proxy
+  - matplotlib
   - numpy=2.0.2
   - pandas=2.2.3
   - panel=1.5.5
